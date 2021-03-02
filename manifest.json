@@ -1,0 +1,9 @@
+{
+  "domain": "nano_pk",
+  "name": "Hargassner Nano-PK",
+  "documentation": "https://github.com/TheRealKillaruna/nano_pk",
+  "dependencies": [],
+  "codeowners": ["@therealkillaruna"],
+  "requirements": [],
+  "version": "0.1"
+}
