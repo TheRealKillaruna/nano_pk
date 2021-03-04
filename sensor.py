@@ -98,7 +98,18 @@ SCAN_INTERVAL = timedelta(seconds=5)
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the sensor platform."""
     bridge = TouchtronicBridge("192.168.0.161")
-    add_entities([NanoPKSensor(bridge, "boiler temperature", "boilerTemp", TEMP_CELSIUS)])
+    add_entities([
+        NanoPKSensor(bridge, "boiler temperature", "boilerTemp", TEMP_CELSIUS),
+        NanoPKSensor(bridge, "power", "power", "%"),
+        NanoPKSensor(bridge, "outside temperature", "outsideTemp", TEMP_CELSIUS),
+        NanoPKSensor(bridge, "buffer temperature 0", "hotWaterTemp", TEMP_CELSIUS),
+        NanoPKSensor(bridge, "buffer temperature 1", "bufferTemp_top", TEMP_CELSIUS),
+        NanoPKSensor(bridge, "buffer temperature 2", "bufferTemp_ctr", TEMP_CELSIUS),
+        NanoPKSensor(bridge, "buffer temperature 3", "bufferTemp_btm", TEMP_CELSIUS),
+        NanoPKSensor(bridge, "return temperature", "returnTemp", TEMP_CELSIUS),
+        NanoPKSensor(bridge, "pellet consumption", "pelletConsumption", "kg"),
+        NanoPKSensor(bridge, "flow temperature", "flowTemp", TEMP_CELSIUS)
+    ])
 
 
 class NanoPKSensor(Entity):
