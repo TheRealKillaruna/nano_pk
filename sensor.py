@@ -100,30 +100,33 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the sensor platform."""
     bridge = HargassnerBridge("192.168.0.161")
     add_entities([
-        HargassnerSensor(bridge, "state", "ZK"),
+        HargassnerSensor(bridge, "state", "ZK", "mdi:cog"),
         HargassnerSensor(bridge, "boiler temperature", "TK"),
-        HargassnerSensor(bridge, "output", "Leistung"),
+        HargassnerSensor(bridge, "smoke gas temperature", "TRG"),
+        HargassnerSensor(bridge, "output", "Leistung", "mdi:fire"),
         HargassnerSensor(bridge, "outside temperature", "Taus"),
-        HargassnerSensor(bridge, "buffer temperature 0", "TB1"),
-        HargassnerSensor(bridge, "buffer temperature 1", "TPo"),
-        HargassnerSensor(bridge, "buffer temperature 2", "TPm"),
-        HargassnerSensor(bridge, "buffer temperature 3", "TPu"),
+        HargassnerSensor(bridge, "buffer temperature 0", "TB1", "mdi:coolant-temperature"),
+        HargassnerSensor(bridge, "buffer temperature 1", "TPo", "mdi:coolant-temperature"),
+        HargassnerSensor(bridge, "buffer temperature 2", "TPm", "mdi:coolant-temperature"),
+        HargassnerSensor(bridge, "buffer temperature 3", "TPu", "mdi:coolant-temperature"),
         HargassnerSensor(bridge, "return temperature", "TRL"),
-        HargassnerSensor(bridge, "buffer level", "Puff Füllgrad"),
-        HargassnerSensor(bridge, "pellet consumption", "Verbrauchszähler"),
-        HargassnerSensor(bridge, "flow temperature", "TVL_1")
+        HargassnerSensor(bridge, "buffer level", "Puff Füllgrad", "mdi:gauge"),
+        HargassnerSensor(bridge, "pellet consumption", "Verbrauchszähler", "mdi:basket-unfill"), # "mdi:arrow-down-box", "mdi:pail-minus", "mdi:transfer-down", "mdi:tranding-down"
+        HargassnerSensor(bridge, "flow temperature", "TVL_1"),
+        HargassnerSensor(bridge, "error", "Störung", "mdi:alert")
     ])
 
 
 class HargassnerSensor(Entity):
     """Representation of a Sensor."""
 
-    def __init__(self, bridge, description, paramName):
+    def __init__(self, bridge, description, paramName, icon=None):
         """Initialize the sensor."""
         self._state = None
         self._bridge = bridge
         self._description = description
         self._paramName = paramName
+        self._icon = icon
         self._unit = bridge.getParamUnit(paramName)
 
     @property
@@ -140,6 +143,11 @@ class HargassnerSensor(Entity):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         return self._unit
+
+    @property
+    def icon(self):
+        """Return an icon for the sensor in the GUI."""
+        return self._icon
 
     def update(self):
         """Fetch new state data for the sensor.
