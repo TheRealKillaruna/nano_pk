@@ -84,13 +84,13 @@ class HargassnerBridge:
         if param[0]==self.ANALOG: return self.latestMsg[param[1]] # return message value directly for analog parameters
         return (((int)(self.latestMsg[param[1]], 16) & param[2]) > 0) # return boolean for digital parameters
         
-    def getParamUnit(self, paramName):
+    def getMeasurementUnit(self, paramName):
         param = self.paramData.get(paramName)
         if param==None: return None # paramName is not known
         if param[0]==self.ANALOG: return param[2] # return unit for analog parameter
         return "" # digital params do not have units
         
-    def getParamData(self):
+    def getSupportedParameters(self):
         return self.paramData
     
 
@@ -101,7 +101,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the sensor platform."""
     bridge = HargassnerBridge("192.168.0.161", updateInterval=SCAN_INTERVAL.total_seconds())
 #    entities = []
-#    for p in bridge.getParamData(): entities.append(HargassnerSensor(bridge, p, p))
+#    for p in bridge.getSupportedParameters(): entities.append(HargassnerSensor(bridge, p, p))
 #    add_entities(entities)
     add_entities([
         HargassnerStateSensor(bridge),
@@ -131,7 +131,7 @@ class HargassnerSensor(Entity):
         self._description = description
         self._paramName = paramName
         self._icon = icon
-        self._unit = bridge.getParamUnit(paramName)
+        self._unit = bridge.getMeasurementUnit(paramName)
 
     @property
     def name(self):
