@@ -24,12 +24,13 @@ class HargassnerBridge:
     ANALOG = 'A'
     DIGITAL = 'D'
     
-    def __init__(self, hostIP, msgFormat="Nano.2(.3)-V14.0l1"):
+    def __init__(self, hostIP, updateInterval=5, msgFormat="Nano.2(.3)-V14.0l1"):
         self.hostIP = hostIP
         self.telnet = Telnet(hostIP)
         self.connectionOK = False
         self.scheduler = BackgroundScheduler()
-        self.scheduler.add_job(lambda:self.__update(),'interval',seconds=5)
+        if updateInterval<0.5: updateInterval=0.5 # Hargassner sends 2 messages per second, no need to poll more frequent than that
+        self.scheduler.add_job(lambda:self.__update(),'interval',seconds=updateInterval)
         self.scheduler.start()
         self.latestMsg = None
         self.setMessageFormat(msgFormat)
@@ -98,7 +99,7 @@ SCAN_INTERVAL = timedelta(seconds=5)
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the sensor platform."""
-    bridge = HargassnerBridge("192.168.0.161")
+    bridge = HargassnerBridge("192.168.0.161", updateInterval=SCAN_INTERVAL.total_seconds())
     add_entities([
         HargassnerSensor(bridge, "state", "ZK", "mdi:cog"),
         HargassnerSensor(bridge, "boiler temperature", "TK"),
