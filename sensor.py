@@ -100,8 +100,11 @@ SCAN_INTERVAL = timedelta(seconds=5)
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the sensor platform."""
     bridge = HargassnerBridge("192.168.0.161", updateInterval=SCAN_INTERVAL.total_seconds())
+#    entities = []
+#    for p in bridge.getParamData(): entities.append(HargassnerSensor(bridge, p, p))
+#    add_entities(entities)
     add_entities([
-        HargassnerSensor(bridge, "state", "ZK", "mdi:cog"),
+        HargassnerStateSensor(bridge),
         HargassnerSensor(bridge, "boiler temperature", "TK"),
         HargassnerSensor(bridge, "smoke gas temperature", "TRG"),
         HargassnerSensor(bridge, "output", "Leistung", "mdi:fire"),
@@ -156,3 +159,20 @@ class HargassnerSensor(Entity):
         """
         self._state = self._bridge.get(self._paramName)
 
+
+class HargassnerStateSensor(HargassnerSensor):
+
+    STATES = {"1":"Aus", "3":"Kessel Start", "4":"Zündüberwachung", "5":"Zündung", "6":"Übergang LB", "7":"Leistungsbrand"}
+
+    def __init__(self, bridge):
+        super().__init__(bridge, "state", "ZK")
+
+    def update(self):
+        """Fetch new state data for the sensor.
+        This is the only method that should fetch new data for Home Assistant.
+        """
+        rawState = self._bridge.get(self._paramName)
+        self._state = self.STATES.get(rawState)
+        if self._state==None: self._state = "Unbekannt ("+rawState+")"
+        if rawState=="6" or rawState=="7": self._icon = "mdi:fireplace"
+        else: self._icon = "mdi:fireplace-off"
