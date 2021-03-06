@@ -77,9 +77,21 @@ class HargassnerSensor(Entity):
 
 class HargassnerErrorSensor(HargassnerSensor):
 
-    ERRORS = {"505":"Aschelade entleeren", "506":"Aschelade zu voll", "529":"Verbrennungsstörung", "541":"Aschebox fast voll", 
-              "570":"Pelletslagerstand niedrig", "589":"Schieberost schwergängig", "593":"Aschelade offen", "728":"Pelletsbehälter fast leer", 
-              "729":"Füllstandsmelder kontrollieren", "770":"Brennkammer reinigen", "1000":"Parameterupgrade"}
+    ERRORS = {
+        "5" : "Aschelade entleeren", 
+        "6" : "Aschelade zu voll", 
+       "29" : "Verbrennungsstörung", 
+       "30" : "Batterie leer", 
+       "31" : "Blockade Einschubmotor", 
+       "32" : "Füllzeit überschritten", 
+       "70" : "Pelletslagerstand niedrig", 
+       "89" : "Schieberost schwergängig", 
+       "93" : "Aschelade offen", 
+      "227" : "Lagerraumschalter aus", 
+      "228" : "Pelletsbehälter fast leer", 
+      "229" : "Füllstandsmelder kontrollieren", 
+      "371" : "Brennraum prüfen"
+    }
 
     def __init__(self, bridge):
         super().__init__(bridge, "operation", "Störung", "mdi:alert")
@@ -105,7 +117,17 @@ class HargassnerErrorSensor(HargassnerSensor):
 
 class HargassnerStateSensor(HargassnerSensor):
 
-    STATES = {"1":"Aus", "3":"Kessel Start", "4":"Zündüberwachung", "5":"Zündung", "6":"Übergang LB", "7":"Leistungsbrand", "10":"Entaschung", "12":"Putzen"}
+    STATES = {
+        "1" : "Aus", 
+        "3" : "Kessel Start", 
+        "4" : "Zündüberwachung", 
+        "5" : "Zündung", 
+        "6" : "Übergang LB", 
+        "7" : "Leistungsbrand", 
+        "9" : "Warten auf EA", 
+       "10" : "Entaschung", 
+       "12" : "Putzen"
+    }
 
     def __init__(self, bridge):
         super().__init__(bridge, "boiler state", "ZK")
