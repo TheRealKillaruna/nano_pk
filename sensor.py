@@ -19,6 +19,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 #    for p in bridge.getSupportedParameters(): entities.append(HargassnerSensor(bridge, p, p))
 #    add_entities(entities)
     add_entities([
+        HargassnerErrorSensor(bridge),
         HargassnerStateSensor(bridge),
         HargassnerSensor(bridge, "boiler temperature", "TK"),
         HargassnerSensor(bridge, "smoke gas temperature", "TRG"),
@@ -31,8 +32,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         HargassnerSensor(bridge, "return temperature", "TRL"),
         HargassnerSensor(bridge, "buffer level", "Puff Füllgrad", "mdi:gauge"),
         HargassnerSensor(bridge, "pellet consumption", "Verbrauchszähler", "mdi:basket-unfill"), # "mdi:arrow-down-box", "mdi:pail-minus", "mdi:transfer-down", "mdi:tranding-down"
-        HargassnerSensor(bridge, "flow temperature", "TVL_1"),
-        HargassnerSensor(bridge, "error", "Störung", "mdi:alert")
+        HargassnerSensor(bridge, "flow temperature", "TVL_1")
     ])
 
 
@@ -75,12 +75,40 @@ class HargassnerSensor(Entity):
         self._state = self._bridge.getValue(self._paramName)
 
 
+class HargassnerErrorSensor(HargassnerSensor):
+
+    ERRORS = {"505":"Aschelade entleeren", "506":"Aschelade zu voll", "529":"Verbrennungsstörung", "541":"Aschebox fast voll", 
+              "570":"Pelletslagerstand niedrig", "589":"Schieberost schwergängig", "593":"Aschelade offen", "728":"Pelletsbehälter fast leer", 
+              "729":"Füllstandsmelder kontrollieren", "770":"Brennkammer reinigen", "1000":"Parameterupgrade"}
+
+    def __init__(self, bridge):
+        super().__init__(bridge, "operation", "Störung", "mdi:alert")
+
+    def update(self):
+        """Fetch new state data for the sensor.
+        This is the only method that should fetch new data for Home Assistant.
+        """
+        rawState = self._bridge.getValue(self._paramName)
+        if rawState==None: self._state = "Unknown"
+        elif rawState=="False":
+            self._state = "ok"
+            self._icon = "mdi:check"
+        else:
+            errorID = self._bridge.getValue("Störungs Nr")
+            errorDescr = self.ERRORS.get(errorID)
+            if errorDescr==None:
+                self._state = "error " + errorID
+            else:
+                self._state = errorDescr
+            self._icon = "mdi:alert"
+
+
 class HargassnerStateSensor(HargassnerSensor):
 
     STATES = {"1":"Aus", "3":"Kessel Start", "4":"Zündüberwachung", "5":"Zündung", "6":"Übergang LB", "7":"Leistungsbrand", "10":"Entaschung", "12":"Putzen"}
 
     def __init__(self, bridge):
-        super().__init__(bridge, "state", "ZK")
+        super().__init__(bridge, "boiler state", "ZK")
 
     def update(self):
         """Fetch new state data for the sensor.
