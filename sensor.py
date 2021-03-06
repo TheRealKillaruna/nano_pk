@@ -46,7 +46,7 @@ class HargassnerSensor(Entity):
         self._description = description
         self._paramName = paramName
         self._icon = icon
-        self._unit = bridge.getMeasurementUnit(paramName)
+        self._unit = bridge.getUnit(paramName)
 
     @property
     def name(self):
@@ -72,7 +72,7 @@ class HargassnerSensor(Entity):
         """Fetch new state data for the sensor.
         This is the only method that should fetch new data for Home Assistant.
         """
-        self._state = self._bridge.get(self._paramName)
+        self._state = self._bridge.getValue(self._paramName)
 
 
 class HargassnerStateSensor(HargassnerSensor):
@@ -86,7 +86,7 @@ class HargassnerStateSensor(HargassnerSensor):
         """Fetch new state data for the sensor.
         This is the only method that should fetch new data for Home Assistant.
         """
-        rawState = self._bridge.get(self._paramName)
+        rawState = self._bridge.getValue(self._paramName)
         self._state = self.STATES.get(rawState)
         if self._state==None: self._state = "Unbekannt (" + (str)(rawState) + ")"
         if rawState=="6" or rawState=="7": self._icon = "mdi:fireplace"

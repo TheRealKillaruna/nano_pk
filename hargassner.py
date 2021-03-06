@@ -137,14 +137,14 @@ class HargassnerBridge:
             self._telnet.open(self._hostIP)
             self._connectionOK = True
     
-    def get(self, paramName):
+    def getValue(self, paramName):
         param = self._paramData.get(paramName)
         if param==None: 
             print("ERROR: Parameter key not known.")
             return None # paramName is not known
         return param.value()
     
-    def getMeasurementUnit(self, paramName):
+    def getUnit(self, paramName):
         param = self._paramData.get(paramName)
         if param==None: 
             print("ERROR: Parameter key not known.")
