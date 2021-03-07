@@ -1,8 +1,8 @@
 """Platform for sensor integration."""
 from homeassistant.const import TEMP_CELSIUS
 from homeassistant.helpers.entity import Entity
+from . import DOMAIN, CONF_HOST, CONF_NAME
 from datetime import timedelta
-
 from apscheduler.schedulers.background import BackgroundScheduler
 from telnetlib import Telnet
 import xml.etree.ElementTree as xml
@@ -14,25 +14,28 @@ SCAN_INTERVAL = timedelta(seconds=5)
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the sensor platform."""
-    bridge = HargassnerBridge("192.168.0.161", updateInterval=SCAN_INTERVAL.total_seconds())
+    host = hass.data[DOMAIN][CONF_HOST]
+    name = hass.data[DOMAIN][CONF_NAME]
+    bridge = HargassnerBridge(host, updateInterval=SCAN_INTERVAL.total_seconds())
 #    entities = []
 #    for p in bridge.getSupportedParameters(): entities.append(HargassnerSensor(bridge, p, p))
 #    add_entities(entities)
     add_entities([
-        HargassnerErrorSensor(bridge),
-        HargassnerStateSensor(bridge),
-        HargassnerSensor(bridge, "boiler temperature", "TK"),
-        HargassnerSensor(bridge, "smoke gas temperature", "TRG"),
-        HargassnerSensor(bridge, "output", "Leistung", "mdi:fire"),
-        HargassnerSensor(bridge, "outside temperature", "Taus"),
-        HargassnerSensor(bridge, "buffer temperature 0", "TB1", "mdi:coolant-temperature"),
-        HargassnerSensor(bridge, "buffer temperature 1", "TPo", "mdi:coolant-temperature"),
-        HargassnerSensor(bridge, "buffer temperature 2", "TPm", "mdi:coolant-temperature"),
-        HargassnerSensor(bridge, "buffer temperature 3", "TPu", "mdi:coolant-temperature"),
-        HargassnerSensor(bridge, "return temperature", "TRL"),
-        HargassnerSensor(bridge, "buffer level", "Puff Füllgrad", "mdi:gauge"),
-        HargassnerSensor(bridge, "pellet consumption", "Verbrauchszähler", "mdi:basket-unfill"), # "mdi:arrow-down-box", "mdi:pail-minus", "mdi:transfer-down", "mdi:tranding-down"
-        HargassnerSensor(bridge, "flow temperature", "TVL_1")
+        HargassnerErrorSensor(bridge, name),
+        HargassnerStateSensor(bridge, name),
+        HargassnerSensor(bridge, name+" boiler temperature", "TK"),
+        HargassnerSensor(bridge, name+" smoke gas temperature", "TRG"),
+        HargassnerSensor(bridge, name+" output", "Leistung", "mdi:fire"),
+        HargassnerSensor(bridge, name+" outside temperature", "Taus"),
+        HargassnerSensor(bridge, name+" buffer temperature 0", "TB1", "mdi:coolant-temperature"),
+        HargassnerSensor(bridge, name+" buffer temperature 1", "TPo", "mdi:coolant-temperature"),
+        HargassnerSensor(bridge, name+" buffer temperature 2", "TPm", "mdi:coolant-temperature"),
+        HargassnerSensor(bridge, name+" buffer temperature 3", "TPu", "mdi:coolant-temperature"),
+        HargassnerSensor(bridge, name+" return temperature", "TRL"),
+        HargassnerSensor(bridge, name+" buffer level", "Puff Füllgrad", "mdi:gauge"),
+        HargassnerSensor(bridge, name+" pellet stock", "Lagerstand", "mdi:silo"), # "mdi:basket-outline"
+        HargassnerSensor(bridge, name+" pellet consumption", "Verbrauchszähler", "mdi:basket-unfill"), # "mdi:arrow-down-box", "mdi:pail-minus", "mdi:transfer-down", "mdi:tranding-down"
+        HargassnerSensor(bridge, name+" flow temperature", "TVL_1")
     ])
 
 
@@ -51,7 +54,7 @@ class HargassnerSensor(Entity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return "Nano-PK " + self._description
+        return self._description
 
     @property
     def state(self):
@@ -93,8 +96,8 @@ class HargassnerErrorSensor(HargassnerSensor):
       "371" : "Brennraum prüfen"
     }
 
-    def __init__(self, bridge):
-        super().__init__(bridge, "operation", "Störung", "mdi:alert")
+    def __init__(self, bridge, deviceName):
+        super().__init__(bridge, deviceName+" operation", "Störung", "mdi:alert")
 
     def update(self):
         """Fetch new state data for the sensor.
@@ -119,6 +122,7 @@ class HargassnerStateSensor(HargassnerSensor):
 
     STATES = {
         "1" : "Aus", 
+        "2" : "Startvorbereitung",
         "3" : "Kessel Start", 
         "4" : "Zündüberwachung", 
         "5" : "Zündung", 
@@ -129,8 +133,8 @@ class HargassnerStateSensor(HargassnerSensor):
        "12" : "Putzen"
     }
 
-    def __init__(self, bridge):
-        super().__init__(bridge, "boiler state", "ZK")
+    def __init__(self, bridge, deviceName):
+        super().__init__(bridge, deviceName+" boiler state", "ZK")
 
     def update(self):
         """Fetch new state data for the sensor.
