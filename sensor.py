@@ -1,14 +1,15 @@
 """Platform for sensor integration."""
-from homeassistant.const import TEMP_CELSIUS
+import logging
 from homeassistant.helpers.entity import Entity
 from . import DOMAIN, CONF_HOST, CONF_FORMAT, CONF_NAME
 from datetime import timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from telnetlib import Telnet
 import xml.etree.ElementTree as xml
-from custom_components.nano_pk.hargassner import HargassnerBridge
+from .hargassner import HargassnerBridge
 
 
+_LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=5)
 
@@ -18,6 +19,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     format = hass.data[DOMAIN][CONF_FORMAT]
     name = hass.data[DOMAIN][CONF_NAME]
     bridge = HargassnerBridge(host, msgFormat=format)
+    errorLog = bridge.getErrorLog()
+    if errorLog != "": _LOGGER.error(errorLog)
 #    entities = []
 #    for p in bridge.getSupportedParameters(): entities.append(HargassnerSensor(bridge, p, p))
 #    add_entities(entities)
@@ -34,8 +37,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         HargassnerSensor(bridge, name+" buffer temperature 3", "TPu", "mdi:coolant-temperature"),
         HargassnerSensor(bridge, name+" return temperature", "TRL"),
         HargassnerSensor(bridge, name+" buffer level", "Puff Füllgrad", "mdi:gauge"),
-        HargassnerSensor(bridge, name+" pellet stock", "Lagerstand", "mdi:silo"), # "mdi:basket-outline"
-        HargassnerSensor(bridge, name+" pellet consumption", "Verbrauchszähler", "mdi:basket-unfill"), # "mdi:arrow-down-box", "mdi:pail-minus", "mdi:transfer-down", "mdi:tranding-down"
+        HargassnerSensor(bridge, name+" pellet stock", "Lagerstand", "mdi:silo"),
+        HargassnerSensor(bridge, name+" pellet consumption", "Verbrauchszähler", "mdi:basket-unfill"),
         HargassnerSensor(bridge, name+" flow temperature", "TVL_1")
     ])
 
@@ -101,9 +104,6 @@ class HargassnerErrorSensor(HargassnerSensor):
         super().__init__(bridge, deviceName+" operation", "Störung", "mdi:alert")
 
     def update(self):
-        """Fetch new state data for the sensor.
-        This is the only method that should fetch new data for Home Assistant.
-        """
         rawState = self._bridge.getValue(self._paramName)
         if rawState==None: self._state = "Unknown"
         elif rawState=="False":
@@ -117,6 +117,10 @@ class HargassnerErrorSensor(HargassnerSensor):
             else:
                 self._state = errorDescr
             self._icon = "mdi:alert"
+        errorLog = self._bridge.getErrorLog()
+        if errorLog != "": _LOGGER.error(errorLog)
+        infoLog = self._bridge.getInfoLog()
+        if infoLog != "": _LOGGER.info(infoLog)
 
 
 class HargassnerStateSensor(HargassnerSensor):
@@ -138,9 +142,6 @@ class HargassnerStateSensor(HargassnerSensor):
         super().__init__(bridge, deviceName+" boiler state", "ZK")
 
     def update(self):
-        """Fetch new state data for the sensor.
-        This is the only method that should fetch new data for Home Assistant.
-        """
         rawState = self._bridge.getValue(self._paramName)
         self._state = self.STATES.get(rawState)
         if self._state==None: self._state = "Unbekannt (" + (str)(rawState) + ")"

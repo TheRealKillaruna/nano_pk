@@ -90,6 +90,8 @@ class HargassnerBridge:
         self._latestUpdate = None
         self._paramData = {}
         self._expectedMsgLength = 0
+        self._errorLog = ""
+        self._infoLog = ""
         self.setMessageFormat(msgFormat)
         self._scheduler = BackgroundScheduler()
         if updateInterval<0.5: updateInterval=0.5 # Hargassner sends 2 messages per second, no need to poll more frequent than that
@@ -100,23 +102,25 @@ class HargassnerBridge:
         if msgFormat in HargassnerMessageTemplates.DICT:
             msgFormat = HargassnerMessageTemplates.DICT[msgFormat] # if one of the constants has been passed, expand to full format string
         if not msgFormat.startswith("<DAQPRJ>"):
+            self._errorLog += "HargassnerBridge.setMessageFormat(): Message template does not start with '<DAQPRJ>'.\n"
             return False
         self._paramData = {}
         root = xml.fromstring(msgFormat)
         analog = root.find("ANALOG")
         for channel in analog.findall("CHANNEL"):
             self._paramData[(str)(channel.get("name"))] = HargassnerAnalogueParameter( (str)(channel.get("name")), (int)(channel.get("id")), (str)(channel.get("unit")))
-        ofsDigital = len(self._paramData)
+        ofsDigital = len(self._paramData) # assuming that channel ids/indices are listed consecutively without any misses!
         lenDigital = 0
         digital = root.find("DIGITAL")
         for channel in digital.findall("CHANNEL"):
             self._paramData[(str)(channel.get("name"))] = HargassnerDigitalParameter( (str)(channel.get("name")), ofsDigital + (int)(channel.get("id")),  1 << (int)(channel.get("bit")))
-            lenDigital = (int)(channel.get("id")) + 1
+            lenDigital = (int)(channel.get("id")) + 1 # assuming that channel ids are increasing
         self._expectedMsgLength = ofsDigital + lenDigital
+        self._infoLog += "HargassnerBridge.setMessageFormat(): successfully parsed " + (str)(self._expectedMsgLength) + " elements.\n"
         return True
         
     def close(self):
-        print("Closing connection...")
+        self._infoLog += "HargassnerBridge.close(): Closing connection...\n"
         self._scheduler.shutdown()
         self._telnet.close()
         
@@ -125,39 +129,38 @@ class HargassnerBridge:
             try:
                 data = self._telnet.read_very_eager()
             except EOFError as error:
-                print(error)
+                self._errorLog += "HargassnerBridge._update(): Telnet connection error (" + (str)(error) + ")\n"
                 self._connectionOK = False
                 return    
             msg = data.decode("ascii")
             lastMsgStart = msg.rfind("pm ")
             if lastMsgStart < 0: 
-                print("WARNING: Received message contains no data.")
-                print(msg)
+                self._infoLog += "HargassnerBridge._update(): Received message contains no data.\n"
                 return
             msg = msg[lastMsgStart+3:-3].split(' ')
             if  len(msg) != self._expectedMsgLength:
-                print("WARNING: Received message has unexpected length.")
+                self._errorLog += "HargassnerBridge._update(): Received message has unexpected length.\n"
                 return
             for param in self._paramData.values():
                 param.initializeFromMessage(msg)
             self._latestUpdate = datetime.now()
         else:
-            print("Opening connection...")
+            self._infoLog += "HargassnerBridge._update(): Opening connection...\n"
             self._telnet.open(self._hostIP)
             self._connectionOK = True
     
     def getValue(self, paramName):
         param = self._paramData.get(paramName)
         if param==None: 
-            print("ERROR: Parameter key not known.")
-            return None # paramName is not known
+            self._errorLog += "HargassnerBridge.getValue(): Parameter key " + paramName + " not known.\n"
+            return None 
         return param.value()
     
     def getUnit(self, paramName):
         param = self._paramData.get(paramName)
         if param==None: 
-            print("ERROR: Parameter key not known.")
-            return None # paramName is not known
+            self._errorLog += "HargassnerBridge.getUnit(): Parameter key " + paramName + " not known.\n"
+            return None 
         return param.unit()
     
     def data(self):
@@ -166,3 +169,12 @@ class HargassnerBridge:
     def latestUpdateTime(self):
         return self._latestUpdate
     
+    def getErrorLog(self):
+        log = self._errorLog
+        self._errorLog = ""
+        return log
+    
+    def getInfoLog(self):
+        log = self._infoLog
+        self._infoLog = ""
+        return log

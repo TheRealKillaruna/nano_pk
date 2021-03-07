@@ -1,7 +1,7 @@
 """The Hargassner Nano-PK boiler temperature sensor integration."""
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from custom_components.nano_pk.hargassner import HargassnerMessageTemplates as hmt
+from .hargassner import HargassnerMessageTemplates as hmt
 
 DOMAIN = "nano_pk"
 
@@ -17,6 +17,7 @@ CONFIG_SCHEMA = vol.Schema({
     })
 }, extra=vol.ALLOW_EXTRA
 )
+
 
 def setup(hass, config):
     
