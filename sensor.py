@@ -1,7 +1,7 @@
 """Platform for sensor integration."""
 from homeassistant.const import TEMP_CELSIUS
 from homeassistant.helpers.entity import Entity
-from . import DOMAIN, CONF_HOST, CONF_NAME
+from . import DOMAIN, CONF_HOST, CONF_FORMAT, CONF_NAME
 from datetime import timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from telnetlib import Telnet
@@ -15,8 +15,9 @@ SCAN_INTERVAL = timedelta(seconds=5)
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the sensor platform."""
     host = hass.data[DOMAIN][CONF_HOST]
+    format = hass.data[DOMAIN][CONF_FORMAT]
     name = hass.data[DOMAIN][CONF_NAME]
-    bridge = HargassnerBridge(host, updateInterval=SCAN_INTERVAL.total_seconds())
+    bridge = HargassnerBridge(host, msgFormat=format)
 #    entities = []
 #    for p in bridge.getSupportedParameters(): entities.append(HargassnerSensor(bridge, p, p))
 #    add_entities(entities)
