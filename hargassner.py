@@ -29,10 +29,16 @@ class HargassnerMessageTemplates:
 
 class HargassnerParameter:
     
-    _DESCRIPTIONS = { "ZK":"state", "O2":"o2", "O2soll":"o2 target", "TK":"boiler temperature", "TKsoll":"boiler temperature target", "TRG":"smoke gas temperature", 
+    _DESCRIPTIONS = { "ZK":"boiler state", "O2":"o2", "O2soll":"o2 target", "TK":"boiler temperature", "TKsoll":"boiler temperature target", "TRG":"smoke gas temperature", 
                       "SZist":"draft", "SZsoll":"draft target", "Leistung":"output", "ESsoll":"delivery rate", "I Es":"drawer current", "I Sr":"grate current", "I Rein":"cleaning current",
                       "Taus":"outside temperature", "TA Gem.":"mean outside temperature", "TPo":"buffer temperature top", "TPm":"buffer temperature center", "TPu":"buffer temperature bottom",
-                      "TRL":"return temperature", "TRLsoll":"return temperature target"}
+                      "TRL":"return temperature", "TRLsoll":"return temperature target", "LZ ES seit Füll.":"runtime since refill", "LZ ES seit Ent.":"runtime since ash removal",
+                      "Anzahl Entasch.":"ash removals", "Anzahl SR Beweg.":"grate movements", "Puff Füllgrad":"buffer level", "Lagerstand":"pellet stock", "Verbrauchszähler":"pellet consumption",
+                      "Störungs Nr":"error code", "TVL_1":"flow 1 temperature", "TVLs_1":"flow 1 temperature target", "TVL_2":"flow 2 temperature", "TVLs_2":"flow 2 temperature target",
+                      "TVL_3":"flow 3 temperature", "TVLs_3":"flow 3 temperature target", "TVL_4":"flow 4 temperature", "TVLs_4":"flow 4 temperature target",
+                      "TVL_5":"flow 5 temperature", "TVLs_5":"flow 5 temperature target", "TVL_6":"flow 6 temperature", "TVLs_6":"flow 6 temperature target",
+                      "TB1":"hot water 1 temperature", "TBs_1":"hot water 1 temperature target", "TB2":"hot water 2 temperature", "TBs_2":"hot water 2 temperature target",
+                      "TB3":"hot water 3 temperature", "TBs_3":"hot water 3 temperature target", "Störung":"error" }
     
     def __init__(self, key, index, unit):
         self._key = key
