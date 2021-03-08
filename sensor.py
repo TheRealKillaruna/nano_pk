@@ -1,7 +1,7 @@
 """Platform for sensor integration."""
 import logging
 from homeassistant.helpers.entity import Entity
-from . import DOMAIN, CONF_HOST, CONF_FORMAT, CONF_NAME
+from . import DOMAIN, CONF_HOST, CONF_FORMAT, CONF_NAME, CONF_PARAMS, CONF_PARAMS_STANDARD, CONF_PARAMS_FULL
 from datetime import timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from telnetlib import Telnet
@@ -18,28 +18,37 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     host = hass.data[DOMAIN][CONF_HOST]
     format = hass.data[DOMAIN][CONF_FORMAT]
     name = hass.data[DOMAIN][CONF_NAME]
+    paramSet = hass.data[DOMAIN][CONF_PARAMS]
     bridge = HargassnerBridge(host, msgFormat=format)
     errorLog = bridge.getErrorLog()
     if errorLog != "": _LOGGER.error(errorLog)
-#    entities = []
-#    for p in bridge.getSupportedParameters(): entities.append(HargassnerSensor(bridge, p, p))
-#    add_entities(entities)
-    add_entities([
-        HargassnerErrorSensor(bridge, name),
-        HargassnerStateSensor(bridge, name),
-        HargassnerSensor(bridge, name+" boiler temperature", "TK"),
-        HargassnerSensor(bridge, name+" smoke gas temperature", "TRG"),
-        HargassnerSensor(bridge, name+" output", "Leistung", "mdi:fire"),
-        HargassnerSensor(bridge, name+" outside temperature", "Taus"),
-        HargassnerSensor(bridge, name+" buffer temperature 0", "TB1", "mdi:coolant-temperature"),
-        HargassnerSensor(bridge, name+" buffer temperature 1", "TPo", "mdi:coolant-temperature"),
-        HargassnerSensor(bridge, name+" buffer temperature 2", "TPm", "mdi:coolant-temperature"),
-        HargassnerSensor(bridge, name+" buffer temperature 3", "TPu", "mdi:coolant-temperature"),
-        HargassnerSensor(bridge, name+" return temperature", "TRL"),
-        HargassnerSensor(bridge, name+" buffer level", "Puff Füllgrad", "mdi:gauge"),
-        HargassnerSensor(bridge, name+" pellet stock", "Lagerstand", "mdi:silo"),
-        HargassnerSensor(bridge, name+" pellet consumption", "Verbrauchszähler", "mdi:basket-unfill"),
-        HargassnerSensor(bridge, name+" flow temperature", "TVL_1")
+    if paramSet == CONF_PARAMS_FULL:
+        entities = []
+        for p in bridge.data().values(): 
+            if p.key()=="Störung": 
+                entities.append(HargassnerErrorSensor(bridge, name))
+            elif p.key()=="ZK": 
+                entities.append(HargassnerStateSensor(bridge, name))
+            else:
+                entities.append(HargassnerSensor(bridge, name+" "+p.description(), p.key()))
+        add_entities(entities)
+    else:
+        add_entities([
+            HargassnerErrorSensor(bridge, name),
+            HargassnerStateSensor(bridge, name),
+            HargassnerSensor(bridge, name+" boiler temperature", "TK"),
+            HargassnerSensor(bridge, name+" smoke gas temperature", "TRG"),
+            HargassnerSensor(bridge, name+" output", "Leistung", "mdi:fire"),
+            HargassnerSensor(bridge, name+" outside temperature", "Taus"),
+            HargassnerSensor(bridge, name+" buffer temperature 0", "TB1", "mdi:coolant-temperature"),
+            HargassnerSensor(bridge, name+" buffer temperature 1", "TPo", "mdi:coolant-temperature"),
+            HargassnerSensor(bridge, name+" buffer temperature 2", "TPm", "mdi:coolant-temperature"),
+            HargassnerSensor(bridge, name+" buffer temperature 3", "TPu", "mdi:coolant-temperature"),
+            HargassnerSensor(bridge, name+" return temperature", "TRL"),
+            HargassnerSensor(bridge, name+" buffer level", "Puff Füllgrad", "mdi:gauge"),
+            HargassnerSensor(bridge, name+" pellet stock", "Lagerstand", "mdi:silo"),
+            HargassnerSensor(bridge, name+" pellet consumption", "Verbrauchszähler", "mdi:basket-unfill"),
+            HargassnerSensor(bridge, name+" flow temperature", "TVL_1")
     ])
 
 
