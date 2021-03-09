@@ -1,9 +1,10 @@
 # nano_pk
 Home Assistant integration of Hargassner Nano-PK pellet heating systems.
 
-This is a custom component to integrate Hargassner heatings with touch screen control into Home Assistant.
+This is a custom component to integrate Hargassner heatings with Touch Tronic (touch screen control) into Home Assistant.
 It will add a number of new sensors to your HA that display the current state of the heating.
-It does not allow remote control of your heating.
+All you need is a connection from your Hargassner heating directly from the Touch Tronic to your local LAN, the internet gateway is not required.
+The nano_pk component does not allow remote control of your heating.
 
 I have developed and tested it on a Nano-PK model, but chances are high it will work on other Hargassner models as well.
 Read on how to try this and let me know if it works!
@@ -38,3 +39,7 @@ Apart from the provided templates for `msgformat` (see above), this configuratio
 3. Open this file in a text editor and search for an XML section `<DAQPRJ> ... </DAQPRJ>` right at the beginning.
 4. Copy the entire section and place it using quotes in your `configuration.yaml`, so that you have something like this: `msgformat="<DAQPRJ> ... </DAQPRJ>"`
 5. For different heating models, set `parameters` to `FULL` to check out which parameters are sent.
+
+
+### Acknowledgements ###
+This [code](https://github.com/Jahislove/Hargassner) by @Jahislove was very helpful to understand the messages sent by the heating - thank you!
