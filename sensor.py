@@ -1,7 +1,7 @@
 """Platform for sensor integration."""
 import logging
 from homeassistant.helpers.entity import Entity
-from . import DOMAIN, CONF_HOST, CONF_FORMAT, CONF_NAME, CONF_PARAMS, CONF_PARAMS_STANDARD, CONF_PARAMS_FULL
+from . import DOMAIN, CONF_HOST, CONF_FORMAT, CONF_NAME, CONF_PARAMS, CONF_PARAMS_STANDARD, CONF_PARAMS_FULL, CONF_LANG, CONF_LANG_EN, CONF_LANG_DE
 from datetime import timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from telnetlib import Telnet
@@ -19,6 +19,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     format = hass.data[DOMAIN][CONF_FORMAT]
     name = hass.data[DOMAIN][CONF_NAME]
     paramSet = hass.data[DOMAIN][CONF_PARAMS]
+    lang = hass.data[DOMAIN][CONF_LANG]
     bridge = HargassnerBridge(host, msgFormat=format)
     errorLog = bridge.getErrorLog()
     if errorLog != "": _LOGGER.error(errorLog)
@@ -28,14 +29,14 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             if p.key()=="Störung": 
                 entities.append(HargassnerErrorSensor(bridge, name))
             elif p.key()=="ZK": 
-                entities.append(HargassnerStateSensor(bridge, name))
+                entities.append(HargassnerStateSensor(bridge, name, lang))
             else:
                 entities.append(HargassnerSensor(bridge, name+" "+p.description(), p.key()))
         add_entities(entities)
     else:
         add_entities([
             HargassnerErrorSensor(bridge, name),
-            HargassnerStateSensor(bridge, name),
+            HargassnerStateSensor(bridge, name, lang),
             HargassnerSensor(bridge, name+" boiler temperature", "TK"),
             HargassnerSensor(bridge, name+" smoke gas temperature", "TRG"),
             HargassnerSensor(bridge, name+" output", "Leistung", "mdi:fire"),
@@ -116,7 +117,7 @@ class HargassnerErrorSensor(HargassnerSensor):
         rawState = self._bridge.getValue(self._paramName)
         if rawState==None: self._state = "Unknown"
         elif rawState=="False":
-            self._state = "ok"
+            self._state = "OK"
             self._icon = "mdi:check"
         else:
             errorID = self._bridge.getValue("Störungs Nr")
@@ -134,25 +135,30 @@ class HargassnerErrorSensor(HargassnerSensor):
 
 class HargassnerStateSensor(HargassnerSensor):
 
+    UNKNOWN_STATE = "?"
     STATES = {
-        "1" : "Aus", 
-        "2" : "Startvorbereitung",
-        "3" : "Kessel Start", 
-        "4" : "Zündüberwachung", 
-        "5" : "Zündung", 
-        "6" : "Übergang LB", 
-        "7" : "Leistungsbrand", 
-        "9" : "Warten auf EA", 
-       "10" : "Entaschung", 
-       "12" : "Putzen"
+        "1" : {CONF_LANG_DE:"Aus", CONF_LANG_EN:"Off"},
+        "2" : {CONF_LANG_DE:"Startvorbereitung", CONF_LANG_EN:"Preparing start"},
+        "3" : {CONF_LANG_DE:"Kessel Start", CONF_LANG_EN:"Boiler start"},
+        "4" : {CONF_LANG_DE:"Zündüberwachung", CONF_LANG_EN:"Monitoring ignition"},
+        "5" : {CONF_LANG_DE:"Zündung", CONF_LANG_EN:"Ignition"},
+        "6" : {CONF_LANG_DE:"Übergang LB", CONF_LANG_EN:"Transition to FF"},
+        "7" : {CONF_LANG_DE:"Leistungsbrand", CONF_LANG_EN:"Full firing"},
+        "9" : {CONF_LANG_DE:"Warten auf EA", CONF_LANG_EN:"Waiting for AR"},
+       "10" : {CONF_LANG_DE:"Entaschung", CONF_LANG_EN:"Ash removal"},
+       "12" : {CONF_LANG_DE:"Putzen", CONF_LANG_EN:"Cleaning"},
+       UNKNOWN_STATE : {CONF_LANG_DE:"Unbekannt", CONF_LANG_EN:"Unknown"}
     }
 
-    def __init__(self, bridge, deviceName):
+    def __init__(self, bridge, deviceName, lang):
         super().__init__(bridge, deviceName+" boiler state", "ZK")
+        self._lang = lang
 
     def update(self):
         rawState = self._bridge.getValue(self._paramName)
-        self._state = self.STATES.get(rawState)
-        if self._state==None: self._state = "Unbekannt (" + (str)(rawState) + ")"
+        if rawState in self.STATES:
+            self._state = self.STATES[rawState][self._lang]
+        else: 
+            self._state = self.STATES[UNKNOWN_STATE][self._lang] + " (" + (str)(rawState) + ")"
         if rawState=="6" or rawState=="7": self._icon = "mdi:fireplace"
         else: self._icon = "mdi:fireplace-off"
