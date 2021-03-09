@@ -46,4 +46,4 @@ Apart from the provided templates for `msgformat` (see above), this configuratio
 
 
 ### Feedback ###
-You can leave feedback for this custom component in the [corresponding thread](https://community.home-assistant.io/c/projects/9) at the Home Assistant community forum.
+You can leave feedback for this custom component in the [corresponding thread](https://community.home-assistant.io/t/hargassner-heating-integration/288568) at the Home Assistant community forum.
