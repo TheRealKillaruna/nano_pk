@@ -10,8 +10,8 @@ Read on how to try this and let me know if it works!
 
 ### Quick setup guide ###
 
-1. Create a folder `custom_components` in your Home Assistant `config` folder (if not yet done)
-2. Copy all code from this repository to `config/custom_components/nano_pk`
+1. Create a folder `custom_components` in your Home Assistant `config` folder (if not yet done).
+2. Copy all code from this repository to `config/custom_components/nano_pk`.
 3. Add a section like this to your configuration.yaml:
 ```
 nano_pk:
@@ -21,6 +21,7 @@ nano_pk:
   parameters: STANDARD
   language: DE
 ```
+4. Restart HA.
 
 ### Supported parameters ###
 - host [required]: IP of your heating. After connecting the heating with your local network, the touch screen will show this.
