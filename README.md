@@ -27,7 +27,7 @@ nano_pk:
 ### Supported parameters ###
 - host [required]: IP of your heating. After connecting the heating with your local network, the touch screen will show this.
 - msgformat [required]: All Hargassner heatings with touch screen send out their messages in a different format, and this changes with different firmware versions. Out of the box, `NANO_V14K` and `NANO_V14L` are supported, which are two recent firmwares for the Nano-PK (you can see the firmware version on your touch screen).
-- devicename [optional]: The name under which all heating sensors will appear in HA.
+- devicename [optional]: The name under which all heating sensors will appear in HA. By default, this is `Hargassner`.
 - parameters [optional]: `STANDARD` is, you guessed it, the standard and imports the most important parameters from the heating as sensors. `FULL` will give you everything that is sent out.
 - language [optional]: Configures the output of the heating state sensor. `EN` is the default, `DE` is also available.
 
@@ -42,4 +42,8 @@ Apart from the provided templates for `msgformat` (see above), this configuratio
 
 
 ### Acknowledgements ###
-This [code](https://github.com/Jahislove/Hargassner) by @Jahislove was very helpful to understand the messages sent by the heating - thank you!
+[This code](https://github.com/Jahislove/Hargassner) by @Jahislove was very helpful to understand the messages sent by the heating - thank you!
+
+
+### Feedback ###
+You can leave feedback for this custom component in the [corresponding thread](https://community.home-assistant.io/c/projects/9) at the Home Assistant community forum.
