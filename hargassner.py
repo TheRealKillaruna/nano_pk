@@ -10,6 +10,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from telnetlib import Telnet
 from datetime import datetime
 import xml.etree.ElementTree as xml
+from pytz import utc
 
 
 
@@ -99,7 +100,7 @@ class HargassnerBridge:
         self._errorLog = ""
         self._infoLog = ""
         self.setMessageFormat(msgFormat)
-        self._scheduler = BackgroundScheduler()
+        self._scheduler = BackgroundScheduler(timezone=utc)
         if updateInterval<0.5: updateInterval=0.5 # Hargassner sends 2 messages per second, no need to poll more frequent than that
         self._scheduler.add_job(lambda:self._update(),'interval',seconds=updateInterval)
         self._scheduler.start()
