@@ -7,6 +7,7 @@ All you need is a connection from your Hargassner heating directly from the Touc
 The nano_pk component does not allow remote control of your heating.
 
 I have developed and tested it on a Nano-PK model, but chances are high it will work on other Hargassner models as well.
+According to user reports, it is also compatible with Rennergy Mini PK heating models.
 Read on how to try this and let me know if it works!
 
 ### Quick setup guide ###
@@ -26,7 +27,7 @@ nano_pk:
 
 ### Supported parameters ###
 - host [required]: IP of your heating. After connecting the heating with your local network, the touch screen will show this.
-- msgformat [required]: All Hargassner heatings with touch screen send out their messages in a different format, and this changes with different firmware versions. Out of the box, `NANO_V14K` and `NANO_V14L` are supported, which are two recent firmwares for the Nano-PK (you can see the firmware version on your touch screen).
+- msgformat [required]: All Hargassner heatings with touch screen send out their messages in a different format, and this changes with different firmware versions. Out of the box, `NANO_V14K`, `NANO_V14L`, and `NANO_V14M` are supported, which are three recent firmwares for the Nano-PK (you can see the firmware version on your touch screen).
 - devicename [optional]: The name under which all heating sensors will appear in HA. By default, this is `Hargassner`.
 - parameters [optional]: `STANDARD` is, you guessed it, the standard and imports the most important parameters from the heating as sensors. `FULL` will give you everything that is sent out.
 - language [optional]: Configures the output of the heating state sensor. `EN` is the default, `DE` is also available.
