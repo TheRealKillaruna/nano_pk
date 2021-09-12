@@ -117,7 +117,12 @@ class HargassnerBridge:
         root = xml.fromstring(msgFormat)
         analog = root.find("ANALOG")
         for channel in analog.findall("CHANNEL"):
-            self._paramData[(str)(channel.get("name"))] = HargassnerAnalogueParameter( (str)(channel.get("name")), (int)(channel.get("id")), (str)(channel.get("unit")))
+            uniqueName = (str)(channel.get("name"))
+            nameCount = 1
+            while uniqueName in self._paramData: # in case parameter name is duplicate, add a counter to make it unique
+                nameCount += 1
+                uniqueName = (str)(channel.get("name")) + "_" + str(nameCount)
+            self._paramData[uniqueName] = HargassnerAnalogueParameter( uniqueName, (int)(channel.get("id")), (str)(channel.get("unit")))
         ofsDigital = len(self._paramData) # assuming that channel ids/indices are listed consecutively without any misses!
         lenDigital = 0
         digital = root.find("DIGITAL")
