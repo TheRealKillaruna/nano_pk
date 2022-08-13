@@ -50,7 +50,13 @@ class HargassnerParameter:
         self._index = index
         self._value = None
         self._unit = unit
-        
+        if key in ["LZ ES seit Füll.", "LZ ES seit Ent.", "Anzahl Entasch.", "Anzahl SR Beweg.", "Verbrauchszähler"]:
+            self._stateClass = "total_increasing"
+        elif key=="Lagerstand":
+            self._stateClass = "total"
+        else:
+            self._stateClass = "measurement"
+    
     def __str__(self):
         if self.value(): return self.description() + " : " + self.value() + " " + self.unit()
         else: return self.description() + " : unknown"
@@ -69,6 +75,9 @@ class HargassnerParameter:
     
     def description(self):
         return HargassnerParameter._DESCRIPTIONS.get(self.key(), self.key())
+    
+    def stateClass(self):
+        return self._stateClass
 
 
 class HargassnerAnalogueParameter(HargassnerParameter):
@@ -178,6 +187,13 @@ class HargassnerBridge:
             self._errorLog += "HargassnerBridge.getUnit(): Parameter key " + paramName + " not known.\n"
             return None 
         return param.unit()
+    
+    def getStateClass(self, paramName):
+        param = self._paramData.get(paramName)
+        if param==None: 
+            self._errorLog += "HargassnerBridge.getUnit(): Parameter key " + paramName + " not known.\n"
+            return None 
+        return param.stateClass()
     
     def data(self):
         return self._paramData
