@@ -103,7 +103,7 @@ class HargassnerDigitalParameter(HargassnerParameter):
 
 class HargassnerBridge:
        
-    def __init__(self, hostIP, updateInterval=1.0, msgFormat=HargassnerMessageTemplates.NANO_V14L):
+    def __init__(self, hostIP, uniqueId, updateInterval=1.0, msgFormat=HargassnerMessageTemplates.NANO_V14L):
         self._hostIP = hostIP
         self._telnet = Telnet(hostIP)
         self._connectionOK = False
@@ -112,6 +112,7 @@ class HargassnerBridge:
         self._expectedMsgLength = 0
         self._errorLog = ""
         self._infoLog = ""
+        self._unique_id = uniqueId
         self.setMessageFormat(msgFormat)
         self._scheduler = BackgroundScheduler(timezone=utc)
         if updateInterval<0.5: updateInterval=0.5 # Hargassner sends 2 messages per second, no need to poll more frequent than that
@@ -174,6 +175,9 @@ class HargassnerBridge:
             self._telnet.open(self._hostIP)
             self._connectionOK = True
     
+    def getUniqueId(self):
+        return self._unique_id
+
     def getValue(self, paramName):
         param = self._paramData.get(paramName)
         if param==None: 

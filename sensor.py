@@ -21,7 +21,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     name = hass.data[DOMAIN][CONF_NAME]
     paramSet = hass.data[DOMAIN][CONF_PARAMS]
     lang = hass.data[DOMAIN][CONF_LANG]
-    bridge = HargassnerBridge(host, msgFormat=format)
+    uniqueId = hass.data[DOMAIN][CONF_LANG]
+    bridge = HargassnerBridge(host, uniqueId, msgFormat=format)
     errorLog = bridge.getErrorLog()
     if errorLog != "": _LOGGER.error(errorLog)
     if paramSet == CONF_PARAMS_FULL:
@@ -65,6 +66,7 @@ class HargassnerSensor(SensorEntity):
         self._description = description
         self._paramName = paramName
         self._icon = icon
+        self._unique_id = bridge.getUniqueId()
         self._unit = bridge.getUnit(paramName)
         sc = bridge.getStateClass(paramName)
         if sc=="measurement": self._stateClass = SensorStateClass.MEASUREMENT
@@ -109,6 +111,10 @@ class HargassnerSensor(SensorEntity):
         """
         self._value = self._bridge.getValue(self._paramName)
 
+    @property
+    def unique_id(self):
+        """Return the unique id of the sensor."""
+        return self._unique_id + self._paramName
 
 class HargassnerEnergySensor(HargassnerSensor):
 
