@@ -194,6 +194,6 @@ class HargassnerStateSensor(HargassnerSensor):
         if rawState in self.STATES:
             self._value = self.STATES[rawState][self._lang]
         else: 
-            self._value = self.STATES[UNKNOWN_STATE][self._lang] + " (" + (str)(rawState) + ")"
+            self._value = self.STATES[self.UNKNOWN_STATE][self._lang] + " (" + (str)(rawState) + ")"
         if rawState=="6" or rawState=="7": self._icon = "mdi:fireplace"
         else: self._icon = "mdi:fireplace-off"
