@@ -179,6 +179,7 @@ class HargassnerStateSensor(HargassnerSensor):
         "5" : {CONF_LANG_DE:"Zündung", CONF_LANG_EN:"Ignition"},
         "6" : {CONF_LANG_DE:"Übergang LB", CONF_LANG_EN:"Transition to FF"},
         "7" : {CONF_LANG_DE:"Leistungsbrand", CONF_LANG_EN:"Full firing"},
+        "8" : {CONF_LANG_DE:"Gluterhaltung", CONF_LANG_EN:"Ember preservation"},
         "9" : {CONF_LANG_DE:"Warten auf EA", CONF_LANG_EN:"Waiting for AR"},
        "10" : {CONF_LANG_DE:"Entaschung", CONF_LANG_EN:"Ash removal"},
        "12" : {CONF_LANG_DE:"Putzen", CONF_LANG_EN:"Cleaning"},
