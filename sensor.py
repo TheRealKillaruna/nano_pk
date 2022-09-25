@@ -21,7 +21,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     name = hass.data[DOMAIN][CONF_NAME]
     paramSet = hass.data[DOMAIN][CONF_PARAMS]
     lang = hass.data[DOMAIN][CONF_LANG]
-    bridge = HargassnerBridge(host, msgFormat=format)
+    uniqueId = hass.data[DOMAIN][CONF_LANG]
+    bridge = HargassnerBridge(host, uniqueId, msgFormat=format)
     errorLog = bridge.getErrorLog()
     if errorLog != "": _LOGGER.error(errorLog)
     if paramSet == CONF_PARAMS_FULL:
@@ -65,6 +66,7 @@ class HargassnerSensor(SensorEntity):
         self._description = description
         self._paramName = paramName
         self._icon = icon
+        self._unique_id = bridge.getUniqueId()
         self._unit = bridge.getUnit(paramName)
         sc = bridge.getStateClass(paramName)
         if sc=="measurement": self._stateClass = SensorStateClass.MEASUREMENT
@@ -109,6 +111,10 @@ class HargassnerSensor(SensorEntity):
         """
         self._value = self._bridge.getValue(self._paramName)
 
+    @property
+    def unique_id(self):
+        """Return the unique id of the sensor."""
+        return self._unique_id + self._paramName
 
 class HargassnerEnergySensor(HargassnerSensor):
 
@@ -173,6 +179,7 @@ class HargassnerStateSensor(HargassnerSensor):
         "5" : {CONF_LANG_DE:"Zündung", CONF_LANG_EN:"Ignition"},
         "6" : {CONF_LANG_DE:"Übergang LB", CONF_LANG_EN:"Transition to FF"},
         "7" : {CONF_LANG_DE:"Leistungsbrand", CONF_LANG_EN:"Full firing"},
+        "8" : {CONF_LANG_DE:"Gluterhaltung", CONF_LANG_EN:"Ember preservation"},
         "9" : {CONF_LANG_DE:"Warten auf EA", CONF_LANG_EN:"Waiting for AR"},
        "10" : {CONF_LANG_DE:"Entaschung", CONF_LANG_EN:"Ash removal"},
        "12" : {CONF_LANG_DE:"Putzen", CONF_LANG_EN:"Cleaning"},
@@ -188,6 +195,6 @@ class HargassnerStateSensor(HargassnerSensor):
         if rawState in self.STATES:
             self._value = self.STATES[rawState][self._lang]
         else: 
-            self._value = self.STATES[UNKNOWN_STATE][self._lang] + " (" + (str)(rawState) + ")"
+            self._value = self.STATES[self.UNKNOWN_STATE][self._lang] + " (" + (str)(rawState) + ")"
         if rawState=="6" or rawState=="7": self._icon = "mdi:fireplace"
         else: self._icon = "mdi:fireplace-off"
