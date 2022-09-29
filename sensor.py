@@ -144,6 +144,7 @@ class HargassnerErrorSensor(HargassnerSensor):
        "70" : "Pelletslagerstand niedrig", 
        "89" : "Schieberost schwergängig", 
        "93" : "Aschelade offen", 
+      "155" : "Spülung defekt", 
       "227" : "Lagerraumschalter aus", 
       "228" : "Pelletsbehälter fast leer", 
       "229" : "Füllstandsmelder kontrollieren", 
