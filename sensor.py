@@ -126,6 +126,11 @@ class HargassnerEnergySensor(HargassnerSensor):
     def update(self):
         self._value = 4.8 * float(self._bridge.getValue(self._paramName))
 
+    @property
+    def unique_id(self):
+        """Return the unique id of the sensor."""
+        return self._unique_id + self._paramName + "-E"
+
 
 class HargassnerErrorSensor(HargassnerSensor):
 
