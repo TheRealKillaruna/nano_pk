@@ -11,7 +11,7 @@ from telnetlib import Telnet
 from datetime import datetime
 import xml.etree.ElementTree as xml
 from pytz import utc
-
+from typing import List
 
 
 
@@ -120,7 +120,7 @@ class HargassnerBridge:
         self.setMessageFormat(msgFormat)
         self._scheduler = BackgroundScheduler(timezone=utc)
         if updateInterval<0.5: updateInterval=0.5 # Hargassner sends 2 messages per second, no need to poll more frequent than that
-        self._scheduler.add_job(lambda:self._update(),'interval',seconds=updateInterval)
+        self._scheduler.add_job(lambda:self.update(),'interval',seconds=updateInterval)
         self._scheduler.start()
         
     def setMessageFormat(self, msgFormat):
@@ -154,30 +154,41 @@ class HargassnerBridge:
         self._scheduler.shutdown()
         self._telnet.close()
         
-    def _update(self):
+    def update(self) -> bool:
         if self._connectionOK:
             try:
                 data = self._telnet.read_very_eager()
             except EOFError as error:
-                self._errorLog += "HargassnerBridge._update(): Telnet connection error (" + (str)(error) + ")\n"
+                self._errorLog += "HargassnerBridge.update(): Telnet connection error (" + (str)(error) + ")\n"
                 self._connectionOK = False
-                return    
-            msg = data.decode("ascii")
-            lastMsgStart = msg.rfind("pm ")
-            if lastMsgStart < 0: 
-                self._infoLog += "HargassnerBridge._update(): Received message contains no data.\n"
-                return
-            msg = msg[lastMsgStart+3:-3].split(' ')
-            if  len(msg) != self._expectedMsgLength:
-                self._errorLog += "HargassnerBridge._update(): Received message has unexpected length.\n"
-                return
+                return False
+            msg: str = data.decode("ascii")
+            lines: List[str] = msg.splitlines()
+            line: str = ""
+            l: str
+            for l in reversed(lines):
+                l = l.lstrip().rstrip()
+                if l.startswith("pm"):
+                    line = l
+                    break
+            
+            if not line:
+                self._infoLog += "HargassnerBridge.update(): Received message contains no data: " + msg + "\n"
+                return False
+            
+            parts = line.split(' ')[1:] # Skip the first (pm)
+            if len(parts) < self._expectedMsgLength:
+                self._errorLog += "HargassnerBridge.update(): Received message has unexpected length.\n"
+                return False
             for param in self._paramData.values():
-                param.initializeFromMessage(msg)
+                param.initializeFromMessage(parts)
             self._latestUpdate = datetime.now()
+            return True
         else:
-            self._infoLog += "HargassnerBridge._update(): Opening connection...\n"
+            self._infoLog += "HargassnerBridge.update(): Opening connection...\n"
             self._telnet.open(self._hostIP)
             self._connectionOK = True
+            return False
     
     def getUniqueId(self):
         return self._unique_id
