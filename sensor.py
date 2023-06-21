@@ -153,6 +153,9 @@ class HargassnerErrorSensor(HargassnerSensor):
 
     def __init__(self, bridge, deviceName):
         super().__init__(bridge, deviceName+" operation", "Störung", "mdi:alert")
+        self._stateClass = None
+        self._deviceClass = SensorDeviceClass.ENUM
+        self._options = list(self.ERRORS.values())
 
     def update(self):
         rawState = self._bridge.getValue(self._paramName)
@@ -164,7 +167,7 @@ class HargassnerErrorSensor(HargassnerSensor):
             errorID = self._bridge.getValue("Störungs Nr")
             errorDescr = self.ERRORS.get(errorID)
             if errorDescr==None:
-                self._value = "error " + errorID
+                self._value = "Error " + errorID
             else:
                 self._value = errorDescr
             self._icon = "mdi:alert"
@@ -176,31 +179,20 @@ class HargassnerErrorSensor(HargassnerSensor):
 
 class HargassnerStateSensor(HargassnerSensor):
 
-    UNKNOWN_STATE = "?"
-    STATES = {
-        "1" : {CONF_LANG_DE:"Aus", CONF_LANG_EN:"Off"},
-        "2" : {CONF_LANG_DE:"Startvorbereitung", CONF_LANG_EN:"Preparing start"},
-        "3" : {CONF_LANG_DE:"Kessel Start", CONF_LANG_EN:"Boiler start"},
-        "4" : {CONF_LANG_DE:"Zündüberwachung", CONF_LANG_EN:"Monitoring ignition"},
-        "5" : {CONF_LANG_DE:"Zündung", CONF_LANG_EN:"Ignition"},
-        "6" : {CONF_LANG_DE:"Übergang LB", CONF_LANG_EN:"Transition to FF"},
-        "7" : {CONF_LANG_DE:"Leistungsbrand", CONF_LANG_EN:"Full firing"},
-        "8" : {CONF_LANG_DE:"Gluterhaltung", CONF_LANG_EN:"Ember preservation"},
-        "9" : {CONF_LANG_DE:"Warten auf EA", CONF_LANG_EN:"Waiting for AR"},
-       "10" : {CONF_LANG_DE:"Entaschung", CONF_LANG_EN:"Ash removal"},
-       "12" : {CONF_LANG_DE:"Putzen", CONF_LANG_EN:"Cleaning"},
-       UNKNOWN_STATE : {CONF_LANG_DE:"Unbekannt", CONF_LANG_EN:"Unknown"}
-    }
-
     def __init__(self, bridge, deviceName, lang):
         super().__init__(bridge, deviceName+" boiler state", "ZK")
-        self._lang = lang
+        self._stateClass = None
+        self._deviceClass = SensorDeviceClass.ENUM
+        if lang==CONF_LANG_DE:
+            self._options = ["Unbekannt", "Aus", "Startvorbereitung", "Kessel Start", "Zündüberwachung", "Zündung", "Übergang LB", "Leistungsbrand", "Gluterhaltung", "Warten auf EA", "Entaschung", "-", "Putzen"]
+        else:
+            self._options = ["Unknown", "Off", "Preparing start", "Boiler start", "Monitoring ignition", "Ignition", "Transition to FF", "Full firing", "Ember preservation", "Waiting for AR", "Ash removal", "-", "Cleaning"]
 
     def update(self):
         rawState = self._bridge.getValue(self._paramName)
-        if rawState in self.STATES:
-            self._value = self.STATES[rawState][self._lang]
-        else: 
-            self._value = self.STATES[self.UNKNOWN_STATE][self._lang] + " (" + (str)(rawState) + ")"
-        if rawState=="6" or rawState=="7": self._icon = "mdi:fireplace"
+        if rawState==None: idxState = 0
+        else: idxState = int(rawState)
+        if not (idxState>=0 and idxState<=12): idxState=0
+        self._value = self._options[idxState]
+        if idxState==6 or idxState==7: self._icon = "mdi:fireplace"  # (transition to) full firing
         else: self._icon = "mdi:fireplace-off"
