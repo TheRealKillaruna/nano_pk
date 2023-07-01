@@ -34,6 +34,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 entities.append(HargassnerStateSensor(bridge, name, lang))
             else:
                 entities.append(HargassnerSensor(bridge, name+" "+p.description(), p.key()))
+        entities.append(HargassnerEnergySensor(bridge, name))
         add_entities(entities)
     else:
         add_entities([
@@ -69,11 +70,16 @@ class HargassnerSensor(SensorEntity):
         self._unique_id = bridge.getUniqueId()
         self._unit = bridge.getUnit(paramName)
         sc = bridge.getStateClass(paramName)
-        if sc=="measurement": self._stateClass = SensorStateClass.MEASUREMENT
-        elif sc=="total": self._stateClass = SensorStateClass.TOTAL
-        elif sc=="total_increasing": self._stateClass = SensorStateClass.TOTAL_INCREASING
-        if self._unit=="°C": self._deviceClass = SensorDeviceClass.TEMPERATURE
-        else: self._deviceClass = None
+        if (self._unit==None):
+            self._stateClass = None
+            self._deviceClass = SensorDeviceClass.ENUM
+            self._options = ["True", "False"]
+        else:
+            if sc=="measurement": self._stateClass = SensorStateClass.MEASUREMENT
+            elif sc=="total": self._stateClass = SensorStateClass.TOTAL
+            elif sc=="total_increasing": self._stateClass = SensorStateClass.TOTAL_INCREASING
+            if self._unit=="°C": self._deviceClass = SensorDeviceClass.TEMPERATURE
+            else: self._deviceClass = None
 
     @property
     def name(self):

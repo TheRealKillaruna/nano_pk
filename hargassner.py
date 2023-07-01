@@ -94,7 +94,7 @@ class HargassnerAnalogueParameter(HargassnerParameter):
 class HargassnerDigitalParameter(HargassnerParameter):
     
     def __init__(self, key, index, bitmask):
-        super().__init__(key, index, "")
+        super().__init__(key, index, None)
         self._bitmask = bitmask
     
     def initializeFromMessage(self, msg):
