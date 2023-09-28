@@ -27,7 +27,7 @@ nano_pk:
 
 ### Supported parameters ###
 - host [required]: IP of your heating. After connecting the heating with your local network, the touch screen will show this.
-- msgformat [required]: All Hargassner heatings with touch screen send out their messages in a different format, and this changes with different firmware versions. Out of the box, `NANO_V14K`, `NANO_V14L`, and `NANO_V14M` are supported, which are three recent firmwares for the Nano-PK (you can see the firmware version on your touch screen).
+- msgformat [required]: All Hargassner heatings with touch screen send out their messages in a different format, and this changes with different firmware versions. Out of the box, `NANO_V14K`, `NANO_V14L`, `NANO_V14M`, `NANO_V14N`, `NANO_V14N2` and `NANO_V14O3` are supported, which are recent firmwares for the Nano-PK (you can see the firmware version on your touch screen).
 - devicename [optional]: The name under which all heating sensors will appear in HA. By default, this is `Hargassner`.
 - parameters [optional]: `STANDARD` is, you guessed it, the standard and imports the most important parameters from the heating as sensors. `FULL` will give you everything that is sent out.
 - language [optional]: Configures the output of the heating state sensor. `EN` is the default, `DE` is also available.
