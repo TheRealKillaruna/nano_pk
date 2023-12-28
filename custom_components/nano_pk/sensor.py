@@ -2,7 +2,7 @@
 import logging
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
-from . import DOMAIN, CONF_HOST, CONF_FORMAT, CONF_NAME, CONF_PARAMS, CONF_PARAMS_STANDARD, CONF_PARAMS_FULL, CONF_LANG, CONF_LANG_EN, CONF_LANG_DE
+from .const import DOMAIN, CONF_HOST, CONF_FORMAT, CONF_NAME, CONF_PARAMS, CONF_PARAMS_STANDARD, CONF_PARAMS_FULL, CONF_LANG, CONF_LANG_EN, CONF_LANG_DE
 from datetime import timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from telnetlib import Telnet
