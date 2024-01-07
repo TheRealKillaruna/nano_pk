@@ -10,3 +10,6 @@ CONF_LANG = "language"
 CONF_LANG_EN = "EN"
 CONF_LANG_DE = "DE"
 CONF_UNIQUE_ID = "unique_id"
+
+BRIDGE_STATE_OK = "OK"
+BRIDGE_STATE_DISCONNECTED = "Disconnected"

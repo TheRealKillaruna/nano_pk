@@ -30,7 +30,7 @@ CONFIG_SCHEMA = vol.Schema({
 )
 
 
-def setup(hass, config):
+async def async_setup(hass, config) -> bool:
     
     hass.data[DOMAIN] = {}
     hass.data[DOMAIN][CONF_HOST] = config[DOMAIN].get(CONF_HOST)
@@ -40,6 +40,8 @@ def setup(hass, config):
     hass.data[DOMAIN][CONF_LANG] = config[DOMAIN].get(CONF_LANG)
     hass.data[DOMAIN][CONF_UNIQUE_ID] = config[DOMAIN].get(CONF_UNIQUE_ID)
 
-    hass.helpers.discovery.load_platform('sensor', DOMAIN, {}, config)
+    hass.async_create_task(
+        hass.helpers.discovery.async_load_platform('sensor', DOMAIN, {}, config)
+    )
 
     return True

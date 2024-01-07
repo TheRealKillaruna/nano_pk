@@ -5,13 +5,11 @@ Created on Wed Mar  3 22:22:58 2021
 @author: Tobias
 """
 
-
-from apscheduler.schedulers.background import BackgroundScheduler
-from telnetlib import Telnet
-from datetime import datetime
+import asyncio
+from datetime import datetime, timedelta
 import xml.etree.ElementTree as xml
-from pytz import utc
-
+from homeassistant.helpers.entity import Entity
+from .const import BRIDGE_STATE_OK, BRIDGE_STATE_DISCONNECTED
 
 
 
@@ -100,28 +98,32 @@ class HargassnerDigitalParameter(HargassnerParameter):
         self._bitmask = bitmask
     
     def initializeFromMessage(self, msg):
-        self._value = (str)(((int)(msg[self._index], 16) & self._bitmask) > 0)
+        try:
+            self._value = (str)(((int)(msg[self._index], 16) & self._bitmask) > 0)
+        except:
+            self._value = None
 
 
+SCAN_INTERVAL = timedelta(seconds=5)
 
-
-class HargassnerBridge:
+class HargassnerBridge(Entity):
        
-    def __init__(self, hostIP, uniqueId, updateInterval=1.0, msgFormat=HargassnerMessageTemplates.NANO_V14L):
+    def __init__(self, hostIP, name, uniqueId, updateInterval=1.0, msgFormat=HargassnerMessageTemplates.NANO_V14L):
+        super().__init__()
         self._hostIP = hostIP
-        self._telnet = Telnet(hostIP)
         self._connectionOK = False
+        self._reader = None
+        self._writer = None
         self._latestUpdate = None
         self._paramData = {}
         self._expectedMsgLength = 0
+        self._missedMsgs = 0
         self._errorLog = ""
         self._infoLog = ""
+        self._name = name + " connection"
         self._unique_id = uniqueId
         self.setMessageFormat(msgFormat)
-        self._scheduler = BackgroundScheduler(timezone=utc)
-        if updateInterval<0.5: updateInterval=0.5 # Hargassner sends 2 messages per second, no need to poll more frequent than that
-        self._scheduler.add_job(lambda:self._update(),'interval',seconds=updateInterval)
-        self._scheduler.start()
+        
         
     def setMessageFormat(self, msgFormat):
         if msgFormat in HargassnerMessageTemplates.DICT:
@@ -152,37 +154,78 @@ class HargassnerBridge:
         self._infoLog += "HargassnerBridge.setMessageFormat(): successfully parsed " + (str)(self._expectedMsgLength) + " elements.\n"
         return True
         
-    def close(self):
-        self._infoLog += "HargassnerBridge.close(): Closing connection...\n"
-        self._scheduler.shutdown()
-        self._telnet.close()
+    async def async_will_remove_from_hass(self) -> None:
+        """Close connection."""
+        await super().async_will_remove_from_hass()
+        if self._writer:
+            try:
+                self._writer.close()
+                await self._writer.wait_closed()
+            except:
+                pass
         
-    def _update(self):
+    async def async_update(self):
         if self._connectionOK:
             try:
-                data = self._telnet.read_very_eager()
-            except EOFError as error:
-                self._errorLog += "HargassnerBridge._update(): Telnet connection error (" + (str)(error) + ")\n"
+                msgReceived = False
+                data = await asyncio.wait_for(self._reader.read(64*1024), timeout=1.0)   # read up to 64k
+                lines = data.decode().strip().split("\n")
+                for l in reversed(lines):
+                    msg = l.split()[1:] # remove first field "pm"
+                    if len(msg) != self._expectedMsgLength:
+                        continue
+                    for param in self._paramData.values():
+                        param.initializeFromMessage(msg)
+                    self._latestUpdate = datetime.now()
+                    msgReceived = True
+                    self._missedMsgs = 0
+                    break
+                if not msgReceived:
+                    self._errorLog += "HargassnerBridge._update(): Received message has unexpected length.\n"
+                    self._missedMsgs += 1
+                    if self._missedMsgs > 10: self._connectionOK = False    # reconnect if too many errors
+            except Exception as error:
+                self._errorLog += "HargassnerBridge.async_update(): Telnet connection error (" + repr(error) + ")\n"
                 self._connectionOK = False
-                return    
-            msg = data.decode("ascii")
-            lastMsgStart = msg.rfind("pm ")
-            if lastMsgStart < 0: 
-                self._infoLog += "HargassnerBridge._update(): Received message contains no data.\n"
                 return
-            msg = msg[lastMsgStart+3:-3].split(' ')
-            if  len(msg) != self._expectedMsgLength:
-                self._errorLog += "HargassnerBridge._update(): Received message has unexpected length.\n"
-                return
-            for param in self._paramData.values():
-                param.initializeFromMessage(msg)
-            self._latestUpdate = datetime.now()
         else:
             self._infoLog += "HargassnerBridge._update(): Opening connection...\n"
-            self._telnet.open(self._hostIP)
-            self._connectionOK = True
+            try:
+                if self._writer:
+                    self._writer.close()
+                    await self._writer.wait_closed()
+                self._reader, self._writer = await asyncio.open_connection(self._hostIP, 23)
+                self._connectionOK = True
+            except:
+                self._errorLog += "HargassnerBridge.async_update(): Error opening connection\n"
     
-    def getUniqueId(self):
+    @property
+    def name(self) -> str:
+        """Return the name of the entity."""
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        """Return the unique ID of the sensor."""
+        return self._unique_id + "_Connection"
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return True
+        
+    @property
+    def state(self) -> str | None:
+        if self._connectionOK: return BRIDGE_STATE_OK
+        else: return BRIDGE_STATE_DISCONNECTED
+        
+    @property
+    def icon(self):
+        """Return an icon for the sensor in the GUI."""
+        if self._connectionOK: return "mdi:network-outline"
+        else: return "mdi:network-off-outline"
+    
+    def getUniqueIdBase(self):
         return self._unique_id
 
     def getValue(self, paramName):

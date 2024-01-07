@@ -2,7 +2,7 @@
 import logging
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
-from .const import DOMAIN, CONF_HOST, CONF_FORMAT, CONF_NAME, CONF_PARAMS, CONF_PARAMS_STANDARD, CONF_PARAMS_FULL, CONF_LANG, CONF_LANG_EN, CONF_LANG_DE
+from .const import DOMAIN, CONF_HOST, CONF_FORMAT, CONF_NAME, CONF_PARAMS, CONF_PARAMS_STANDARD, CONF_PARAMS_FULL, CONF_LANG, CONF_LANG_EN, CONF_LANG_DE, BRIDGE_STATE_OK
 from datetime import timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from telnetlib import Telnet
@@ -14,7 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=5)
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+def async_setup_platform(hass, config, async_add_entities, discovery_info=None) -> None:
     """Set up the sensor platform."""
     host = hass.data[DOMAIN][CONF_HOST]
     format = hass.data[DOMAIN][CONF_FORMAT]
@@ -22,11 +22,11 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     paramSet = hass.data[DOMAIN][CONF_PARAMS]
     lang = hass.data[DOMAIN][CONF_LANG]
     uniqueId = hass.data[DOMAIN][CONF_LANG]
-    bridge = HargassnerBridge(host, uniqueId, msgFormat=format)
+    bridge = HargassnerBridge(host, name, uniqueId, msgFormat=format)
     errorLog = bridge.getErrorLog()
     if errorLog != "": _LOGGER.error(errorLog)
     if paramSet == CONF_PARAMS_FULL:
-        entities = []
+        entities = [bridge]
         for p in bridge.data().values(): 
             if p.key()=="Störung": 
                 entities.append(HargassnerErrorSensor(bridge, name))
@@ -35,9 +35,10 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             else:
                 entities.append(HargassnerSensor(bridge, name+" "+p.description(), p.key()))
         entities.append(HargassnerEnergySensor(bridge, name))
-        add_entities(entities)
+        async_add_entities(entities)
     else:
-        add_entities([
+        async_add_entities([
+            bridge,
             HargassnerErrorSensor(bridge, name),
             HargassnerStateSensor(bridge, name, lang),
             HargassnerSensor(bridge, name+" boiler temperature", "TK"),
@@ -67,7 +68,7 @@ class HargassnerSensor(SensorEntity):
         self._description = description
         self._paramName = paramName
         self._icon = icon
-        self._unique_id = bridge.getUniqueId()
+        self._unique_id = bridge.getUniqueIdBase()
         self._unit = bridge.getUnit(paramName)
         sc = bridge.getStateClass(paramName)
         if (self._unit==None):
@@ -110,8 +111,13 @@ class HargassnerSensor(SensorEntity):
     def icon(self):
         """Return an icon for the sensor in the GUI."""
         return self._icon
+        
+    @property
+    def available(self):
+        if self._bridge.state == BRIDGE_STATE_OK: return True
+        else: return False
 
-    def update(self):
+    async def async_update(self):
         """Fetch new state data for the sensor.
         This is the only method that should fetch new data for Home Assistant.
         """
@@ -130,7 +136,7 @@ class HargassnerEnergySensor(HargassnerSensor):
         self._deviceClass = SensorDeviceClass.ENERGY
         self._unit = "kWh"
 
-    def update(self):
+    async def async_update(self):
         try:
             self._value = 4.8 * float(self._bridge.getValue(self._paramName))
         except:
@@ -168,7 +174,7 @@ class HargassnerErrorSensor(HargassnerSensor):
         self._deviceClass = SensorDeviceClass.ENUM
         self._options = list(self.ERRORS.values())
 
-    def update(self):
+    async def async_update(self):
         rawState = self._bridge.getValue(self._paramName)
         if rawState==None: self._value = "Unknown"
         elif rawState=="False":
@@ -203,7 +209,7 @@ class HargassnerStateSensor(HargassnerSensor):
         else:
             self._options = ["Unknown", "Off", "Preparing start", "Boiler start", "Monitoring ignition", "Ignition", "Transition to FF", "Full firing", "Ember preservation", "Waiting for AR", "Ash removal", "-", "Cleaning"]
 
-    def update(self):
+    async def async_update(self):
         rawState = self._bridge.getValue(self._paramName)
         try:
             idxState = int(rawState)
