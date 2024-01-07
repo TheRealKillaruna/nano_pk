@@ -122,6 +122,7 @@ class HargassnerSensor(SensorEntity):
         """Return the unique id of the sensor."""
         return self._unique_id + self._paramName
 
+
 class HargassnerEnergySensor(HargassnerSensor):
 
     def __init__(self, bridge, deviceName):
@@ -130,7 +131,11 @@ class HargassnerEnergySensor(HargassnerSensor):
         self._unit = "kWh"
 
     def update(self):
-        self._value = 4.8 * float(self._bridge.getValue(self._paramName))
+        try:
+            self._value = 4.8 * float(self._bridge.getValue(self._paramName))
+        except:
+            _LOGGER.error("HargassnerEnergySensor.update(): Invalid value.\n")
+            self._value = None
 
     @property
     def unique_id(self):
@@ -170,12 +175,16 @@ class HargassnerErrorSensor(HargassnerSensor):
             self._value = "OK"
             self._icon = "mdi:check"
         else:
-            errorID = self._bridge.getValue("Störungs Nr")
-            errorDescr = self.ERRORS.get(errorID)
-            if errorDescr==None:
-                self._value = "Error " + errorID
-            else:
-                self._value = errorDescr
+            try:
+                errorID = self._bridge.getValue("Störungs Nr")
+                errorDescr = self.ERRORS.get(errorID)
+                if errorDescr==None:
+                    self._value = "Error " + errorID
+                else:
+                    self._value = errorDescr
+            except:
+                _LOGGER.error("HargassnerErrorSensor.update(): Invalid error ID.\n")
+                self._value = "Unknown Error"
             self._icon = "mdi:alert"
         errorLog = self._bridge.getErrorLog()
         if errorLog != "": _LOGGER.error(errorLog)
@@ -196,9 +205,14 @@ class HargassnerStateSensor(HargassnerSensor):
 
     def update(self):
         rawState = self._bridge.getValue(self._paramName)
-        if rawState==None: idxState = 0
-        else: idxState = int(rawState)
-        if not (idxState>=0 and idxState<=12): idxState=0
+        try:
+            idxState = int(rawState)
+            if not (idxState>=0 and idxState<=12):
+                _LOGGER.error("HargassnerStateSensor.update(): State index out of bounds.\n")
+                idxState=0
+        except:
+            _LOGGER.error("HargassnerStateSensor.update(): Invalid state.\n")
+            idxState = 0
         self._value = self._options[idxState]
         if idxState==6 or idxState==7: self._icon = "mdi:fireplace"  # (transition to) full firing
         else: self._icon = "mdi:fireplace-off"
