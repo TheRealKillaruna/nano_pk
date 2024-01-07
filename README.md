@@ -13,7 +13,7 @@ Read on how to try this and let me know if it works!
 ### Quick setup guide ###
 
 1. Create a folder `custom_components` in your Home Assistant `config` folder (if not yet done).
-2. Copy all code from this repository to `config/custom_components/nano_pk`.
+2. Copy all code from `custom_components/nano_pk` of this repository to `config/custom_components/nano_pk`.
 3. Add a section like this to your configuration.yaml:
 ```
 nano_pk:
