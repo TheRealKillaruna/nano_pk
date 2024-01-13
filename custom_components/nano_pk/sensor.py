@@ -14,7 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=5)
 
-def async_setup_platform(hass, config, async_add_entities, discovery_info=None) -> None:
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None) -> None:
     """Set up the sensor platform."""
     host = hass.data[DOMAIN][CONF_HOST]
     format = hass.data[DOMAIN][CONF_FORMAT]
@@ -139,8 +139,8 @@ class HargassnerEnergySensor(HargassnerSensor):
     async def async_update(self):
         try:
             self._value = 4.8 * float(self._bridge.getValue(self._paramName))
-        except:
-            _LOGGER.error("HargassnerEnergySensor.update(): Invalid value.\n")
+        except Exception:
+            _LOGGER.warning("HargassnerEnergySensor.update(): Invalid value.\n")
             self._value = None
 
     @property
@@ -188,8 +188,8 @@ class HargassnerErrorSensor(HargassnerSensor):
                     self._value = "Error " + errorID
                 else:
                     self._value = errorDescr
-            except:
-                _LOGGER.error("HargassnerErrorSensor.update(): Invalid error ID.\n")
+            except Exception:
+                _LOGGER.warning("HargassnerErrorSensor.update(): Invalid error ID.\n")
                 self._value = "Unknown Error"
             self._icon = "mdi:alert"
         errorLog = self._bridge.getErrorLog()
@@ -214,10 +214,10 @@ class HargassnerStateSensor(HargassnerSensor):
         try:
             idxState = int(rawState)
             if not (idxState>=0 and idxState<=12):
-                _LOGGER.error("HargassnerStateSensor.update(): State index out of bounds.\n")
+                _LOGGER.warning("HargassnerStateSensor.update(): State index out of bounds.\n")
                 idxState=0
-        except:
-            _LOGGER.error("HargassnerStateSensor.update(): Invalid state.\n")
+        except Exception:
+            _LOGGER.warning("HargassnerStateSensor.update(): Invalid state.\n")
             idxState = 0
         self._value = self._options[idxState]
         if idxState==6 or idxState==7: self._icon = "mdi:fireplace"  # (transition to) full firing
