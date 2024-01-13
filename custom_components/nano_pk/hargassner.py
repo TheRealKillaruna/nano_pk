@@ -9,7 +9,7 @@ import asyncio
 from datetime import datetime, timedelta
 import xml.etree.ElementTree as xml
 from homeassistant.helpers.entity import Entity
-from .const import BRIDGE_STATE_OK, BRIDGE_STATE_DISCONNECTED
+from .const import BRIDGE_STATE_OK, BRIDGE_STATE_DISCONNECTED, BRIDGE_TIMEOUT
 
 
 
@@ -168,7 +168,7 @@ class HargassnerBridge(Entity):
         if self._connectionOK:
             try:
                 msgReceived = False
-                data = await asyncio.wait_for(self._reader.read(64*1024), timeout=1.0)   # read up to 64k
+                data = await asyncio.wait_for(self._reader.read(64*1024), timeout=BRIDGE_TIMEOUT)   # read up to 64k
                 lines = data.decode().strip().split("\n")
                 for l in reversed(lines):
                     msg = l.split()[1:] # remove first field "pm"
@@ -194,7 +194,7 @@ class HargassnerBridge(Entity):
                 if self._writer:
                     self._writer.close()
                     await self._writer.wait_closed()
-                self._reader, self._writer = await asyncio.open_connection(self._hostIP, 23)
+                self._reader, self._writer = await asyncio.wait_for(asyncio.open_connection(self._hostIP, 23), timeout=BRIDGE_TIMEOUT)
                 self._connectionOK = True
             except Exception:
                 self._errorLog += "HargassnerBridge.async_update(): Error opening connection\n"
