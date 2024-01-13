@@ -100,7 +100,7 @@ class HargassnerDigitalParameter(HargassnerParameter):
     def initializeFromMessage(self, msg):
         try:
             self._value = (str)(((int)(msg[self._index], 16) & self._bitmask) > 0)
-        except:
+        except Exception:
             self._value = None
 
 
@@ -161,7 +161,7 @@ class HargassnerBridge(Entity):
             try:
                 self._writer.close()
                 await self._writer.wait_closed()
-            except:
+            except Exception:
                 pass
         
     async def async_update(self):
@@ -184,8 +184,8 @@ class HargassnerBridge(Entity):
                     self._errorLog += "HargassnerBridge._update(): Received message has unexpected length.\n"
                     self._missedMsgs += 1
                     if self._missedMsgs > 10: self._connectionOK = False    # reconnect if too many errors
-            except Exception as error:
-                self._errorLog += "HargassnerBridge.async_update(): Telnet connection error (" + repr(error) + ")\n"
+            except Exception as e:
+                self._errorLog += "HargassnerBridge.async_update(): Telnet connection error (" + repr(e) + ")\n"
                 self._connectionOK = False
                 return
         else:
@@ -196,7 +196,7 @@ class HargassnerBridge(Entity):
                     await self._writer.wait_closed()
                 self._reader, self._writer = await asyncio.open_connection(self._hostIP, 23)
                 self._connectionOK = True
-            except:
+            except Exception:
                 self._errorLog += "HargassnerBridge.async_update(): Error opening connection\n"
     
     @property
