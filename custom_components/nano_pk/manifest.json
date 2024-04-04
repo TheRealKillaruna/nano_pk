@@ -6,6 +6,6 @@
   "domain": "nano_pk",
   "iot_class": "calculated",
   "name": "Hargassner Nano-PK",
-  "requirements": [],
+  "requirements": ["apscheduler"],
   "version": "0.1"
 }
