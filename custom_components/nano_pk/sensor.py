@@ -214,10 +214,10 @@ class HargassnerStateSensor(HargassnerSensor):
         try:
             idxState = int(rawState)
             if not (idxState>=0 and idxState<=12):
-                _LOGGER.warning("HargassnerStateSensor.update(): State index out of bounds.\n")
+                _LOGGER.warning("HargassnerStateSensor.update(): State index out of bounds for sensor: %s. Invalid value: %s\n", self.name, rawState)
                 idxState=0
         except Exception:
-            _LOGGER.warning("HargassnerStateSensor.update(): Invalid state.\n")
+            _LOGGER.warning("HargassnerStateSensor.update(): Invalid state for sensor: %s. Invalid value: %s\n", self.name, rawState)
             idxState = 0
         self._value = self._options[idxState]
         if idxState==6 or idxState==7: self._icon = "mdi:fireplace"  # (transition to) full firing
