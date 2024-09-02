@@ -173,6 +173,7 @@ class HargassnerBridge(Entity):
                 for l in reversed(lines):
                     msg = l.split()[1:] # remove first field "pm"
                     if len(msg) != self._expectedMsgLength:
+                        self._errorLog += f"HargassnerBridge.async_update(): Unexpected message length. Expected: {self._expectedMsgLength}, Actual: {len(msg)}\n" #on error report msgformat and telnet length for debugging
                         continue
                     for param in self._paramData.values():
                         param.initializeFromMessage(msg)
