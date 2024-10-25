@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Mar  3 22:22:58 2021
+Created on Oct 12 2024
 
-@author: Tobias
+@original author: Tobias
+forked by anderl78 v0.1.4
 """
 
 import asyncio
@@ -10,8 +11,10 @@ from datetime import datetime, timedelta
 import xml.etree.ElementTree as xml
 from homeassistant.helpers.entity import Entity
 from .const import BRIDGE_STATE_OK, BRIDGE_STATE_DISCONNECTED, BRIDGE_TIMEOUT
+import logging
 
-
+_LOGGER = logging.getLogger(__name__)
+SCAN_INTERVAL = timedelta(seconds=30)
 
 class HargassnerMessageTemplates:
 
@@ -104,11 +107,9 @@ class HargassnerDigitalParameter(HargassnerParameter):
             self._value = None
 
 
-SCAN_INTERVAL = timedelta(seconds=5)
-
 class HargassnerBridge(Entity):
        
-    def __init__(self, hostIP, name, uniqueId, updateInterval=1.0, msgFormat=HargassnerMessageTemplates.NANO_V14L):
+    def __init__(self, hostIP, name, uniqueId, updateInterval=1.0, msgFormat=HargassnerMessageTemplates.NANO_V14L, hass=None):
         super().__init__()
         self._hostIP = hostIP
         self._connectionOK = False
@@ -122,36 +123,43 @@ class HargassnerBridge(Entity):
         self._infoLog = ""
         self._name = name + " connection"
         self._unique_id = uniqueId
+        self._hass = hass
         self.setMessageFormat(msgFormat)
         
-        
+        # reconnect setting:
+        self.retry_attempts = 0
+        self.max_retries = 5   #(default settings: 5 (five retries to establish a connection, exponential pause between unsuccessful retries 1.try=2sec; 2.try=4sec; 3.try=8sec; 4.try=16sec; 5.try=32sec)
+
     def setMessageFormat(self, msgFormat):
         if msgFormat in HargassnerMessageTemplates.DICT:
-            msgFormat = HargassnerMessageTemplates.DICT[msgFormat] # if one of the constants has been passed, expand to full format string
+            msgFormat = HargassnerMessageTemplates.DICT[msgFormat]  # if one of the constants has been passed, expand to full format string
         if not msgFormat.startswith("<DAQPRJ>"):
             self._errorLog += "HargassnerBridge.setMessageFormat(): Message template does not start with '<DAQPRJ>'.\n"
+            _LOGGER.error(self._errorLog)
             return False
         self._paramData = {}
         root = xml.fromstring(msgFormat)
         analog = root.find("ANALOG")
         for channel in analog.findall("CHANNEL"):
-            uniqueName = (str)(channel.get("name"))
+            uniqueName = str(channel.get("name"))
             nameCount = 1
-            while uniqueName in self._paramData: # in case parameter name is duplicate, add a counter to make it unique
+            while uniqueName in self._paramData:  # in case parameter name is duplicate, add a counter to make it unique
                 nameCount += 1
-                uniqueName = (str)(channel.get("name")) + "_" + str(nameCount)
+                uniqueName = f"{channel.get('name')}_{nameCount}"
             chUnit = channel.get("unit")
-            if chUnit is not None: strUnit = (str)(chUnit)
-            else: strUnit = None # in case parameter has no unit, do not use string conversion but set explicitly to None
-            self._paramData[uniqueName] = HargassnerAnalogueParameter(uniqueName, (int)(channel.get("id")), strUnit)
-        ofsDigital = len(self._paramData) # assuming that channel ids/indices are listed consecutively without any misses!
+            strUnit = str(chUnit) if chUnit is not None else None  # Set explicitly to None if no unit
+            self._paramData[uniqueName] = HargassnerAnalogueParameter(uniqueName, int(channel.get("id")), strUnit)
+        
+        ofsDigital = len(self._paramData)  # Assuming channel ids/indices are listed consecutively without any misses!
         lenDigital = 0
         digital = root.find("DIGITAL")
         for channel in digital.findall("CHANNEL"):
-            self._paramData[(str)(channel.get("name"))] = HargassnerDigitalParameter( (str)(channel.get("name")), ofsDigital + (int)(channel.get("id")),  1 << (int)(channel.get("bit")))
-            lenDigital = (int)(channel.get("id")) + 1 # assuming that channel ids are increasing
+            self._paramData[str(channel.get("name"))] = HargassnerDigitalParameter(str(channel.get("name")), ofsDigital + int(channel.get("id")), 1 << int(channel.get("bit")))
+            lenDigital = int(channel.get("id")) + 1  # Assuming that channel ids are increasing
+            
         self._expectedMsgLength = ofsDigital + lenDigital
-        self._infoLog += "HargassnerBridge.setMessageFormat(): successfully parsed " + (str)(self._expectedMsgLength) + " elements.\n"
+        self._infoLog += f"HargassnerBridge.setMessageFormat(): successfully parsed {self._expectedMsgLength} elements.\n"
+        _LOGGER.info(self._infoLog)
         return True
         
     async def async_will_remove_from_hass(self) -> None:
@@ -161,45 +169,84 @@ class HargassnerBridge(Entity):
             try:
                 self._writer.close()
                 await self._writer.wait_closed()
-            except Exception:
-                pass
+            except Exception as e:
+                _LOGGER.warning(f"Error closing connection: {repr(e)}")
         
     async def async_update(self):
+        length_check_enabled = True  # Standard is "enabled"
+        switch_status = "not found"
+
+        # lengthcheck aktive
+        if self._hass:
+            try:
+                state = self._hass.states.get("input_boolean.length_check_enabled")
+                if state:
+                    switch_status = state.state
+                    length_check_enabled = state.state != "off"
+                else:
+                    switch_status = "not found"
+
+            except Exception as e:
+                self._errorLog += f"HargassnerBridge.async_update(): Error checking length check switch - {repr(e)}\n"
+                _LOGGER.warning(self._errorLog)
+
         if self._connectionOK:
             try:
                 msgReceived = False
                 data = await asyncio.wait_for(self._reader.read(64*1024), timeout=BRIDGE_TIMEOUT)   # read up to 64k
                 lines = data.decode().strip().split("\n")
                 for l in reversed(lines):
-                    msg = l.split()[1:] # remove first field "pm"
-                    if len(msg) != self._expectedMsgLength:
-                        self._errorLog += f"HargassnerBridge.async_update(): Unexpected message length. Expected: {self._expectedMsgLength}, Actual: {len(msg)}\n" #on error report msgformat and telnet length for debugging
-                        continue
+                    msg = l.split()[1:]  # remove first field "pm"
+                    if length_check_enabled:
+                        if len(msg) != self._expectedMsgLength:
+                            self._errorLog += f"HargassnerBridge.async_update(): Unexpected message length. Expected: {self._expectedMsgLength}, Actual: {len(msg)}\n"
+                            _LOGGER.warning(self._errorLog)
+                            continue
+
                     for param in self._paramData.values():
                         param.initializeFromMessage(msg)
                     self._latestUpdate = datetime.now()
                     msgReceived = True
                     self._missedMsgs = 0
                     break
+
+                # errorhandling if unexpected message
                 if not msgReceived:
-                    self._errorLog += "HargassnerBridge._update(): Received message has unexpected length.\n"
+                    self._errorLog += "HargassnerBridge.async_update(): Received message has unexpected length.\n"
                     self._missedMsgs += 1
-                    if self._missedMsgs > 10: self._connectionOK = False    # reconnect if too many errors
+                    if self._missedMsgs > 10:
+                        self._connectionOK = False  # change connection to false to get a reconnect
+                        _LOGGER.error("Too many missed messages, closing connection.")
+
             except Exception as e:
-                self._errorLog += "HargassnerBridge.async_update(): Telnet connection error (" + repr(e) + ")\n"
+                self._errorLog += f"HargassnerBridge.async_update(): Telnet connection error ({repr(e)})\n"
+                _LOGGER.error(self._errorLog)
                 self._connectionOK = False
                 return
-        else:
-            self._infoLog += "HargassnerBridge._update(): Opening connection...\n"
-            try:
-                if self._writer:
-                    self._writer.close()
-                    await self._writer.wait_closed()
-                self._reader, self._writer = await asyncio.wait_for(asyncio.open_connection(self._hostIP, 23), timeout=BRIDGE_TIMEOUT)
-                self._connectionOK = True
-            except Exception:
-                self._errorLog += "HargassnerBridge.async_update(): Error opening connection\n"
-    
+
+        # check if connection needs a reset
+        if not self._connectionOK:
+            self._infoLog += "HargassnerBridge.async_update(): Opening connection...\n"
+            _LOGGER.info(self._infoLog)
+            self.retry_attempts = 0  # reset before each connection attempt
+            while self.retry_attempts < self.max_retries:
+                try:
+                    # try connecting
+                    self._reader, self._writer = await asyncio.wait_for(asyncio.open_connection(self._hostIP, 23), timeout=BRIDGE_TIMEOUT)
+                    self._connectionOK = True
+                    _LOGGER.info("Connection opened successfully.")
+                    break  # close loop if ok
+                except Exception as e:
+                    self._errorLog += "HargassnerBridge.async_update(): Error opening connection, retrying...\n"
+                    _LOGGER.warning(self._errorLog)
+                    self.retry_attempts += 1
+                    await asyncio.sleep(2 ** self.retry_attempts)  # Exponentielles Backoff
+                    
+            # check if ll attempts to open the connection have failed
+            if self.retry_attempts >= self.max_retries:
+                self._errorLog += f"All attempts to open the connection have failed.\n"
+                _LOGGER.error(self._errorLog)
+            
     @property
     def name(self) -> str:
         """Return the name of the entity."""
@@ -217,36 +264,37 @@ class HargassnerBridge(Entity):
         
     @property
     def state(self) -> str | None:
-        if self._connectionOK: return BRIDGE_STATE_OK
-        else: return BRIDGE_STATE_DISCONNECTED
+        return BRIDGE_STATE_OK if self._connectionOK else BRIDGE_STATE_DISCONNECTED
         
     @property
     def icon(self):
         """Return an icon for the sensor in the GUI."""
-        if self._connectionOK: return "mdi:network-outline"
-        else: return "mdi:network-off-outline"
+        return "mdi:network-outline" if self._connectionOK else "mdi:network-off-outline"
     
     def getUniqueIdBase(self):
         return self._unique_id
 
     def getValue(self, paramName):
         param = self._paramData.get(paramName)
-        if param==None: 
-            self._errorLog += "HargassnerBridge.getValue(): Parameter key " + paramName + " not known.\n"
+        if param is None: 
+            self._errorLog += f"HargassnerBridge.getValue(): Parameter key {paramName} not known.\n"
+            _LOGGER.warning(self._errorLog)
             return None 
         return param.value()
     
     def getUnit(self, paramName):
         param = self._paramData.get(paramName)
-        if param==None: 
-            self._errorLog += "HargassnerBridge.getUnit(): Parameter key " + paramName + " not known.\n"
+        if param is None: 
+            self._errorLog += f"HargassnerBridge.getUnit(): Parameter key {paramName} not known.\n"
+            _LOGGER.warning(self._errorLog)
             return None 
         return param.unit()
     
     def getStateClass(self, paramName):
         param = self._paramData.get(paramName)
-        if param==None: 
-            self._errorLog += "HargassnerBridge.getUnit(): Parameter key " + paramName + " not known.\n"
+        if param is None: 
+            self._errorLog += f"HargassnerBridge.getStateClass(): Parameter key {paramName} not known.\n"
+            _LOGGER.warning(self._errorLog)
             return None 
         return param.stateClass()
     
