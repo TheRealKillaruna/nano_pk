@@ -1,4 +1,4 @@
-"""Platform for sensor integration."""
+"""Platform for sensor integration v0.1.4"""
 import logging
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
@@ -9,10 +9,11 @@ from telnetlib import Telnet
 import xml.etree.ElementTree as xml
 from .hargassner import HargassnerBridge
 
-
+# Logging-Konfiguration
+logging.basicConfig(level=logging.INFO)
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(seconds=5)
+SCAN_INTERVAL = timedelta(seconds=30)
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None) -> None:
     """Set up the sensor platform."""
@@ -22,18 +23,24 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     paramSet = hass.data[DOMAIN][CONF_PARAMS]
     lang = hass.data[DOMAIN][CONF_LANG]
     uniqueId = hass.data[DOMAIN][CONF_LANG]
-    bridge = HargassnerBridge(host, name, uniqueId, msgFormat=format)
+    
+    bridge = HargassnerBridge(host, name, uniqueId, msgFormat=format, hass=hass)
+
+    _LOGGER.info(f"Setting up Hargassner sensor platform with host: {host}, format: {format}, name: {name}, params: {paramSet}, lang: {lang}")
+
     errorLog = bridge.getErrorLog()
-    if errorLog != "": _LOGGER.error(errorLog)
+    if errorLog != "":
+        _LOGGER.error(errorLog)
+
     if paramSet == CONF_PARAMS_FULL:
         entities = [bridge]
         for p in bridge.data().values(): 
-            if p.key()=="Störung": 
+            if p.key() == "Störung": 
                 entities.append(HargassnerErrorSensor(bridge, name))
-            elif p.key()=="ZK": 
+            elif p.key() == "ZK": 
                 entities.append(HargassnerStateSensor(bridge, name, lang))
             else:
-                entities.append(HargassnerSensor(bridge, name+" "+p.description(), p.key()))
+                entities.append(HargassnerSensor(bridge, name + " " + p.description(), p.key()))
         entities.append(HargassnerEnergySensor(bridge, name))
         async_add_entities(entities)
     else:
@@ -41,22 +48,21 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
             bridge,
             HargassnerErrorSensor(bridge, name),
             HargassnerStateSensor(bridge, name, lang),
-            HargassnerSensor(bridge, name+" boiler temperature", "TK"),
-            HargassnerSensor(bridge, name+" smoke gas temperature", "TRG"),
-            HargassnerSensor(bridge, name+" output", "Leistung", "mdi:fire"),
-            HargassnerSensor(bridge, name+" outside temperature", "Taus"),
-            HargassnerSensor(bridge, name+" buffer temperature 0", "TB1", "mdi:thermometer-lines"),
-            HargassnerSensor(bridge, name+" buffer temperature 1", "TPo", "mdi:thermometer-lines"),
-            HargassnerSensor(bridge, name+" buffer temperature 2", "TPm", "mdi:thermometer-lines"),
-            HargassnerSensor(bridge, name+" buffer temperature 3", "TPu", "mdi:thermometer-lines"),
-            HargassnerSensor(bridge, name+" return temperature", "TRL", "mdi:coolant-temperature"),
-            HargassnerSensor(bridge, name+" buffer level", "Puff Füllgrad", "mdi:gauge"),
-            HargassnerSensor(bridge, name+" pellet stock", "Lagerstand", "mdi:silo"),
-            HargassnerSensor(bridge, name+" pellet consumption", "Verbrauchszähler", "mdi:basket-unfill"),
-            HargassnerSensor(bridge, name+" flow temperature", "TVL_1", "mdi:coolant-temperature"),
+            HargassnerSensor(bridge, name + " boiler temperature", "TK"),
+            HargassnerSensor(bridge, name + " smoke gas temperature", "TRG"),
+            HargassnerSensor(bridge, name + " output", "Leistung", "mdi:fire"),
+            HargassnerSensor(bridge, name + " outside temperature", "Taus"),
+            HargassnerSensor(bridge, name + " buffer temperature 0", "TB1", "mdi:thermometer-lines"),
+            HargassnerSensor(bridge, name + " buffer temperature 1", "TPo", "mdi:thermometer-lines"),
+            HargassnerSensor(bridge, name + " buffer temperature 2", "TPm", "mdi:thermometer-lines"),
+            HargassnerSensor(bridge, name + " buffer temperature 3", "TPu", "mdi:thermometer-lines"),
+            HargassnerSensor(bridge, name + " return temperature", "TRL", "mdi:coolant-temperature"),
+            HargassnerSensor(bridge, name + " buffer level", "Puff Füllgrad", "mdi:gauge"),
+            HargassnerSensor(bridge, name + " pellet stock", "Lagerstand", "mdi:silo"),
+            HargassnerSensor(bridge, name + " pellet consumption", "Verbrauchszähler", "mdi:basket-unfill"),
+            HargassnerSensor(bridge, name + " flow temperature", "TVL_1", "mdi:coolant-temperature"),
             HargassnerEnergySensor(bridge, name)
-    ])
-
+        ])
 
 class HargassnerSensor(SensorEntity):
     """Representation of a Sensor."""
@@ -71,16 +77,23 @@ class HargassnerSensor(SensorEntity):
         self._unique_id = bridge.getUniqueIdBase()
         self._unit = bridge.getUnit(paramName)
         sc = bridge.getStateClass(paramName)
-        if (self._unit==None):
+        
+        if self._unit == None:
             self._stateClass = None
             self._deviceClass = SensorDeviceClass.ENUM
             self._options = ["True", "False"]
         else:
-            if sc=="measurement": self._stateClass = SensorStateClass.MEASUREMENT
-            elif sc=="total": self._stateClass = SensorStateClass.TOTAL
-            elif sc=="total_increasing": self._stateClass = SensorStateClass.TOTAL_INCREASING
-            if self._unit=="°C": self._deviceClass = SensorDeviceClass.TEMPERATURE
-            else: self._deviceClass = None
+            if sc == "measurement":
+                self._stateClass = SensorStateClass.MEASUREMENT
+            elif sc == "total":
+                self._stateClass = SensorStateClass.TOTAL
+            elif sc == "total_increasing":
+                self._stateClass = SensorStateClass.TOTAL_INCREASING
+
+            if self._unit == "°C":
+                self._deviceClass = SensorDeviceClass.TEMPERATURE
+            else:
+                self._deviceClass = None
 
     @property
     def name(self):
@@ -114,33 +127,38 @@ class HargassnerSensor(SensorEntity):
         
     @property
     def available(self):
-        if self._bridge.state == BRIDGE_STATE_OK: return True
-        else: return False
+        """Return availability of the sensor."""
+        return self._bridge.state == BRIDGE_STATE_OK
 
     async def async_update(self):
         """Fetch new state data for the sensor.
         This is the only method that should fetch new data for Home Assistant.
         """
         self._value = self._bridge.getValue(self._paramName)
+        _LOGGER.debug(f"{self._description} updated value: {self._value}")
 
     @property
     def unique_id(self):
         """Return the unique id of the sensor."""
         return self._unique_id + self._paramName
 
-
 class HargassnerEnergySensor(HargassnerSensor):
 
     def __init__(self, bridge, deviceName):
-        super().__init__(bridge, deviceName+" energy consumption", "Verbrauchszähler", "mdi:radiator")
+        super().__init__(bridge, deviceName + " energy consumption", "Verbrauchszähler", "mdi:radiator")
         self._deviceClass = SensorDeviceClass.ENERGY
         self._unit = "kWh"
 
     async def async_update(self):
         try:
-            self._value = 4.8 * float(self._bridge.getValue(self._paramName))
-        except Exception:
-            _LOGGER.warning("HargassnerEnergySensor.update(): Invalid value.\n")
+            value = self._bridge.getValue(self._paramName)
+            if value is None:
+                _LOGGER.info(f"Received None for {self._paramName}, setting value to None.")
+                self._value = None
+                return
+            self._value = 4.8 * float(value)
+        except ValueError as e:
+            _LOGGER.warning(f"Invalid value received for energy sensor {self._description}: {repr(e)}")
             self._value = None
 
     @property
@@ -148,55 +166,60 @@ class HargassnerEnergySensor(HargassnerSensor):
         """Return the unique id of the sensor."""
         return self._unique_id + self._paramName + "-E"
 
-
 class HargassnerErrorSensor(HargassnerSensor):
 
     ERRORS = {
-        "5" : "Aschelade entleeren", 
-        "6" : "Aschelade zu voll", 
-       "29" : "Verbrennungsstörung", 
-       "30" : "Batterie leer", 
-       "31" : "Blockade Einschubmotor", 
-       "32" : "Füllzeit überschritten", 
-       "70" : "Pelletslagerstand niedrig", 
-       "89" : "Schieberost schwergängig", 
-       "93" : "Aschelade offen", 
-      "155" : "Spülung defekt", 
-      "227" : "Lagerraumschalter aus", 
-      "228" : "Pelletsbehälter fast leer", 
-      "229" : "Füllstandsmelder kontrollieren", 
-      "371" : "Brennraum prüfen"
+        "5": "Aschelade entleeren", 
+        "6": "Aschelade zu voll", 
+        "29": "Verbrennungsstörung", 
+        "30": "Batterie leer", 
+        "31": "Blockade Einschubmotor", 
+        "32": "Füllzeit überschritten", 
+        "70": "Pelletslagerstand niedrig", 
+        "89": "Schieberost schwergängig", 
+        "93": "Aschelade offen", 
+        "155": "Spülung defekt", 
+        "227": "Lagerraumschalter aus", 
+        "228": "Pelletsbehälter fast leer", 
+        "229": "Füllstandsmelder kontrollieren", 
+        "371": "Brennraum prüfen"
     }
 
     def __init__(self, bridge, deviceName):
-        super().__init__(bridge, deviceName+" operation", "Störung", "mdi:alert")
+        super().__init__(bridge, deviceName + " operation", "Störung", "mdi:alert")
         self._stateClass = None
         self._deviceClass = SensorDeviceClass.ENUM
         self._options = list(self.ERRORS.values())
 
     async def async_update(self):
         rawState = self._bridge.getValue(self._paramName)
-        if rawState==None: self._value = "Unknown"
-        elif rawState=="False":
+        _LOGGER.debug(f"Raw state for error sensor {self._description}: {rawState}")
+        
+        if rawState is None:
+            self._value = "Unknown"
+        elif rawState == "False":
             self._value = "OK"
             self._icon = "mdi:check"
         else:
             try:
                 errorID = self._bridge.getValue("Störungs Nr")
                 errorDescr = self.ERRORS.get(errorID)
-                if errorDescr==None:
+                if errorDescr is None:
                     self._value = "Error " + errorID
                 else:
                     self._value = errorDescr
-            except Exception:
-                _LOGGER.warning("HargassnerErrorSensor.update(): Invalid error ID.\n")
+            except Exception as e:
+                _LOGGER.warning(f"HargassnerErrorSensor.update(): Invalid error ID: {e}")
                 self._value = "Unknown Error"
             self._icon = "mdi:alert"
+        
         errorLog = self._bridge.getErrorLog()
-        if errorLog != "": _LOGGER.error(errorLog)
-        infoLog = self._bridge.getInfoLog()
-        if infoLog != "": _LOGGER.info(infoLog)
+        if errorLog != "":
+            _LOGGER.error(errorLog)
 
+        infoLog = self._bridge.getInfoLog()
+        if infoLog != "":
+            _LOGGER.info(infoLog)
 
 class HargassnerStateSensor(HargassnerSensor):
 
@@ -211,13 +234,21 @@ class HargassnerStateSensor(HargassnerSensor):
 
     async def async_update(self):
         rawState = self._bridge.getValue(self._paramName)
+        _LOGGER.debug(f"Raw state for state sensor {self._description}: {rawState}")
+        
+        if rawState is None:
+            _LOGGER.info(f"HargassnerStateSensor.update(): Received None value for {self._description}, set it to Unknown")
+            self._value = "Unbekannt" if CONF_LANG_DE else "Unknown"
+            self._icon = "mdi:fireplace-off"
+            return
+            
         try:
             idxState = int(rawState)
             if not (idxState>=0 and idxState<=12):
-                _LOGGER.warning("HargassnerStateSensor.update(): State index out of bounds.\n")
+                _LOGGER.warning("HargassnerStateSensor.update(): State index out of bounds for sensor: %s. Invalid value: %s\n", self.name, rawState)
                 idxState=0
         except Exception:
-            _LOGGER.warning("HargassnerStateSensor.update(): Invalid state.\n")
+            _LOGGER.warning("HargassnerStateSensor.update(): Invalid state for sensor: %s. Invalid value: %s\n", self.name, rawState)
             idxState = 0
         self._value = self._options[idxState]
         if idxState==6 or idxState==7: self._icon = "mdi:fireplace"  # (transition to) full firing
