@@ -32,11 +32,12 @@ nano_pk:
 - parameters [optional]: `STANDARD` is, you guessed it, the standard and imports the most important parameters from the heating as sensors. `FULL` will give you everything that is sent out.
 - language [optional]: Configures the output of the heating state sensor. `EN` is the default, `DE` is also available.
 - In the hargassner.py you can set two parameters related to how the reconnection system works. Fin "class HargassnerBridge(Entity):"      
+```
         # reconnect setting:
         self.retry_attempts = 0
         self.max_retries = 5
         #(default settings: 5 (five retries to establish a connection, exponential pause between unsuccessful retries 1.try=2sec; 2.try=4sec; 3.try=8sec; 4.try=16sec; 5. try=32sec)
-
+```
 ### SD-Card / How to use with other Hargassner models or different firmware versions ###
 Apart from the provided templates for `msgformat` (see above), this configuration parameter also allows custom message formats. Follow these steps:
 1. To get the correct message format for your heating, enable SD logging on the touch screen and insert a card for a short time (a couple of seconds should be enough). 
@@ -45,13 +46,15 @@ Apart from the provided templates for `msgformat` (see above), this configuratio
 4. Copy the entire section and place it using quotes in your `configuration.yaml`, so that you have something like this: `msgformat="<DAQPRJ> ... </DAQPRJ>"`
 5. For different heating models, set `parameters` to `FULL` to check out which parameters are sent.
 6. if its not working out of the box:
-   - llog into the logs of HA
+   - log into the logs of HA
    - set up a input_boolean.length_check_enabled in HA an disable the lengthcheck temorary to fix this on your own (be aware: not all sensors must be correct!), set up in configuration.yaml:
+```
   input_boolean:
    length_check_enabled:
      name: Hargassner Check Message Length
      initial: true
      icon: mdi:heating-coil
+```
 
 ## Disable automatic update: ##
 1. Register your heater inside the hargassner-app / website
