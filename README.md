@@ -26,11 +26,12 @@ nano_pk:
 4. Restart HA.
 
 ### Supported parameters ###
-- host [required]: IP of your heating. After connecting the heating with your local network, the touch screen will show this.
-- msgformat [required]: All Hargassner heatings with touch screen send out their messages in a different format, and this changes with different firmware versions. Out of the box, `NANO_V14K`, `NANO_V14L`, `NANO_V14M`, `NANO_V14N`, `NANO_V14N2` and `NANO_V14O3` are supported, which are recent firmwares for the Nano-PK (you can see the firmware version on your touch screen).
-- devicename [optional]: The name under which all heating sensors will appear in HA. By default, this is `Hargassner`.
-- parameters [optional]: `STANDARD` is, you guessed it, the standard and imports the most important parameters from the heating as sensors. `FULL` will give you everything that is sent out.
-- language [optional]: Configures the output of the heating state sensor. `EN` is the default, `DE` is also available.
+- **host [required]**: IP of your heating. After connecting the heating with your local network, the touch screen will show this.
+- **msgformat [required]:** All Hargassner heatings with touch screen send out their messages in a different format, and this changes with different firmware versions. Out of the box, `NANO_V14K`, `NANO_V14L`, `NANO_V14M`, `NANO_V14N`, `NANO_V14N2` and `NANO_V14O3` are supported, which are recent firmwares for the Nano-PK (you can see the firmware version on your touch screen).
+  - Additionally `NANO_V141O3` and `NANO_V141O3_2` exist (both for V14.1HAR.o3), the reason for 2 different versions is due to a change in the message format after a technician worked on the heater which somehow changed this format without any firmware or version change. If you have this version please try both!
+- **devicename [optional]:** The name under which all heating sensors will appear in HA. By default, this is `Hargassner`.
+- **parameters [optional]:** `STANDARD` is, you guessed it, the standard and imports the most important parameters from the heating as sensors. `FULL` will give you everything that is sent out.
+- **language [optional]:** Configures the output of the heating state sensor. `EN` is the default, `DE` is also available.
 
 
 ### How to use with other Hargassner models or different firmware versions ###
@@ -40,6 +41,11 @@ Apart from the provided templates for `msgformat` (see above), this configuratio
 3. Open this file in a text editor and search for an XML section `<DAQPRJ> ... </DAQPRJ>` right at the beginning.
 4. Copy the entire section and place it using quotes in your `configuration.yaml`, so that you have something like this: `msgformat="<DAQPRJ> ... </DAQPRJ>"`
 5. For different heating models, set `parameters` to `FULL` to check out which parameters are sent.
+
+
+### Troubleshooting ###
+- *Home Assistant shows `Received message has unexpected length.` or shows `Unknown` for every sensor*
+  - Try the above _**How to use with other Hargassner models or different firmware versions**_ step, the message format might not be fully standard for your heater. The format might change with a lot of major changes in the settings, so in case this comes up sometime in the future or after a technician looked over your setup this might be the right step for you.
 
 
 ### Acknowledgements ###
