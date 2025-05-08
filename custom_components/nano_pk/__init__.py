@@ -1,5 +1,6 @@
 """The Hargassner Nano-PK boiler temperature sensor integration."""
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.discovery import async_load_platform
 import voluptuous as vol
 
 from .const import (
@@ -40,6 +41,6 @@ async def async_setup(hass, config) -> bool:
     hass.data[DOMAIN][CONF_LANG] = config[DOMAIN].get(CONF_LANG)
     hass.data[DOMAIN][CONF_UNIQUE_ID] = config[DOMAIN].get(CONF_UNIQUE_ID)
 
-    await hass.helpers.discovery.async_load_platform('sensor', DOMAIN, {}, config)
+    await async_load_platform(hass, 'sensor', DOMAIN, {}, config)
 
     return True
