@@ -104,8 +104,6 @@ class HargassnerDigitalParameter(HargassnerParameter):
             self._value = None
 
 
-SCAN_INTERVAL = timedelta(seconds=5)
-
 class HargassnerBridge(Entity):
        
     def __init__(self, hostIP, name, uniqueId, updateInterval=1.0, msgFormat=HargassnerMessageTemplates.NANO_V14L):

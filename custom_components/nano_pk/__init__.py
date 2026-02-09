@@ -14,6 +14,7 @@ from .const import (
     CONF_PARAMS_FULL,
     CONF_LANG,
     CONF_LANG_EN,
+    CONF_LANG_FR,
     CONF_LANG_DE
 )
 
@@ -25,7 +26,7 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Optional(CONF_NAME, default="Hargassner"): cv.string,
         vol.Optional(CONF_UNIQUE_ID, default="1"): cv.string,
         vol.Optional(CONF_PARAMS, default=CONF_PARAMS_STANDARD): vol.In([CONF_PARAMS_STANDARD,CONF_PARAMS_FULL]),
-        vol.Optional(CONF_LANG, default=CONF_LANG_EN): vol.In([CONF_LANG_EN,CONF_LANG_DE]),
+        vol.Optional(CONF_LANG, default=CONF_LANG_FR): vol.In([CONF_LANG_EN,CONF_LANG_DE,CONF_LANG_FR]),
     })
 }, extra=vol.ALLOW_EXTRA
 )
