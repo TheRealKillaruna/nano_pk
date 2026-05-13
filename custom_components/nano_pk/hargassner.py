@@ -15,6 +15,20 @@ from .const import BRIDGE_STATE_OK, BRIDGE_STATE_DISCONNECTED, BRIDGE_TIMEOUT
 
 _LOGGER = logging.getLogger(__name__)
 
+_TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
+
+
+def _load_templates() -> dict:
+    """Load all XML template files at module import time (outside the event loop)."""
+    templates = {}
+    for fname in os.listdir(_TEMPLATES_DIR):
+        if fname.endswith(".xml"):
+            key = fname[:-4]  # strip .xml
+            path = os.path.join(_TEMPLATES_DIR, fname)
+            with open(path, encoding="utf-8") as f:
+                templates[key] = f.read()
+    return templates
+
 
 class HargassnerMessageTemplates:
 
@@ -25,16 +39,8 @@ class HargassnerMessageTemplates:
     NANO_V14N2 = "NANO_V14N2"
     NANO_V14O3 = "NANO_V14O3"
 
-    _TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
-
-    @classmethod
-    def get(cls, name: str) -> str | None:
-        template_path = os.path.join(cls._TEMPLATE_DIR, f"{name}.xml")
-        try:
-            with open(template_path, encoding="utf-8") as f:
-                return f.read()
-        except FileNotFoundError:
-            return None
+    # Loaded once at module import time — no I/O on the event loop
+    DICT = _load_templates()
 
 
 class HargassnerParameter:
@@ -130,14 +136,8 @@ class HargassnerBridge(DataUpdateCoordinator):
         
         
     def setMessageFormat(self, msgFormat):
-        if msgFormat in [HargassnerMessageTemplates.NANO_V14K, HargassnerMessageTemplates.NANO_V14L,
-                         HargassnerMessageTemplates.NANO_V14M, HargassnerMessageTemplates.NANO_V14N,
-                         HargassnerMessageTemplates.NANO_V14N2, HargassnerMessageTemplates.NANO_V14O3]:
-            loaded = HargassnerMessageTemplates.get(msgFormat)
-            if loaded is None:
-                _LOGGER.error("HargassnerBridge.setMessageFormat(): Template file for '%s' not found.", msgFormat)
-                return False
-            msgFormat = loaded
+        if msgFormat in HargassnerMessageTemplates.DICT:
+            msgFormat = HargassnerMessageTemplates.DICT[msgFormat]  # expand template name to full XML string
         if not msgFormat.startswith("<DAQPRJ>"):
             _LOGGER.error("HargassnerBridge.setMessageFormat(): Message template does not start with '<DAQPRJ>'.")
             return False
