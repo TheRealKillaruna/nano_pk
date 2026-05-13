@@ -6,11 +6,13 @@ Created on Wed Mar  3 22:22:58 2021
 """
 
 import asyncio
+import logging
 from datetime import datetime, timedelta
 import xml.etree.ElementTree as xml
 from homeassistant.helpers.entity import Entity
 from .const import BRIDGE_STATE_OK, BRIDGE_STATE_DISCONNECTED, BRIDGE_TIMEOUT
 
+_LOGGER = logging.getLogger(__name__)
 
 
 class HargassnerMessageTemplates:
@@ -116,8 +118,6 @@ class HargassnerBridge(Entity):
         self._paramData = {}
         self._expectedMsgLength = 0
         self._missedMsgs = 0
-        self._errorLog = ""
-        self._infoLog = ""
         self._name = name + " connection"
         self._unique_id = uniqueId
         self.setMessageFormat(msgFormat)
@@ -127,7 +127,7 @@ class HargassnerBridge(Entity):
         if msgFormat in HargassnerMessageTemplates.DICT:
             msgFormat = HargassnerMessageTemplates.DICT[msgFormat] # if one of the constants has been passed, expand to full format string
         if not msgFormat.startswith("<DAQPRJ>"):
-            self._errorLog += "HargassnerBridge.setMessageFormat(): Message template does not start with '<DAQPRJ>'.\n"
+            _LOGGER.error("HargassnerBridge.setMessageFormat(): Message template does not start with '<DAQPRJ>'.")
             return False
         self._paramData = {}
         root = xml.fromstring(msgFormat)
@@ -149,7 +149,7 @@ class HargassnerBridge(Entity):
             self._paramData[(str)(channel.get("name"))] = HargassnerDigitalParameter( (str)(channel.get("name")), ofsDigital + (int)(channel.get("id")),  1 << (int)(channel.get("bit")))
             lenDigital = (int)(channel.get("id")) + 1 # assuming that channel ids are increasing
         self._expectedMsgLength = ofsDigital + lenDigital
-        self._infoLog += "HargassnerBridge.setMessageFormat(): successfully parsed " + (str)(self._expectedMsgLength) + " elements.\n"
+        _LOGGER.info("HargassnerBridge.setMessageFormat(): successfully parsed " + (str)(self._expectedMsgLength) + " elements.")
         return True
         
     async def async_will_remove_from_hass(self) -> None:
@@ -179,15 +179,15 @@ class HargassnerBridge(Entity):
                     self._missedMsgs = 0
                     break
                 if not msgReceived:
-                    self._errorLog += "HargassnerBridge._update(): Received message has unexpected length.\n"
+                    _LOGGER.warning("HargassnerBridge.async_update(): Received message has unexpected length.")
                     self._missedMsgs += 1
                     if self._missedMsgs > 10: self._connectionOK = False    # reconnect if too many errors
             except Exception as e:
-                self._errorLog += "HargassnerBridge.async_update(): Telnet connection error (" + repr(e) + ")\n"
+                _LOGGER.error("HargassnerBridge.async_update(): Telnet connection error (" + repr(e) + ")")
                 self._connectionOK = False
                 return
         else:
-            self._infoLog += "HargassnerBridge._update(): Opening connection...\n"
+            _LOGGER.info("HargassnerBridge.async_update(): Opening connection...")
             try:
                 if self._writer:
                     self._writer.close()
@@ -195,7 +195,7 @@ class HargassnerBridge(Entity):
                 self._reader, self._writer = await asyncio.wait_for(asyncio.open_connection(self._hostIP, 23), timeout=BRIDGE_TIMEOUT)
                 self._connectionOK = True
             except Exception:
-                self._errorLog += "HargassnerBridge.async_update(): Error opening connection\n"
+                _LOGGER.error("HargassnerBridge.async_update(): Error opening connection")
     
     @property
     def name(self) -> str:
@@ -229,21 +229,21 @@ class HargassnerBridge(Entity):
     def getValue(self, paramName):
         param = self._paramData.get(paramName)
         if param==None: 
-            self._errorLog += "HargassnerBridge.getValue(): Parameter key " + paramName + " not known.\n"
+            _LOGGER.warning("HargassnerBridge.getValue(): Parameter key " + paramName + " not known.")
             return None 
         return param.value()
     
     def getUnit(self, paramName):
         param = self._paramData.get(paramName)
         if param==None: 
-            self._errorLog += "HargassnerBridge.getUnit(): Parameter key " + paramName + " not known.\n"
+            _LOGGER.warning("HargassnerBridge.getUnit(): Parameter key " + paramName + " not known.")
             return None 
         return param.unit()
     
     def getStateClass(self, paramName):
         param = self._paramData.get(paramName)
         if param==None: 
-            self._errorLog += "HargassnerBridge.getUnit(): Parameter key " + paramName + " not known.\n"
+            _LOGGER.warning("HargassnerBridge.getStateClass(): Parameter key " + paramName + " not known.")
             return None 
         return param.stateClass()
     
@@ -252,13 +252,3 @@ class HargassnerBridge(Entity):
     
     def latestUpdateTime(self):
         return self._latestUpdate
-    
-    def getErrorLog(self):
-        log = self._errorLog
-        self._errorLog = ""
-        return log
-    
-    def getInfoLog(self):
-        log = self._infoLog
-        self._infoLog = ""
-        return log

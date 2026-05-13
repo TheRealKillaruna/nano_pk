@@ -131,10 +131,6 @@ class HargassnerErrorSensor(HargassnerSensor):
         self._attr_options = ["OK", "Unknown", "Unknown Error"] + list(self.ERRORS.values())
 
     async def async_update(self):
-        # LOGS DE DEBUG : Pour voir si le pont remonte des erreurs
-        err = self._bridge.getErrorLog()
-        if err: _LOGGER.warning(f"Bridge Log: {err}")
-        
         rawState = self._bridge.getValue(self._paramName)
         if rawState is None: 
             self._value = "Unknown"
