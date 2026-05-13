@@ -178,7 +178,7 @@ class HargassnerBridge(DataUpdateCoordinator):
         if self._connectionOK:
             try:
                 msgReceived = False
-                data = await asyncio.wait_for(self._reader.read(4096), timeout=BRIDGE_TIMEOUT)   # read up to 4k
+                data = await asyncio.wait_for(self._reader.read(64*1024), timeout=BRIDGE_TIMEOUT)   # read up to 64k
                 lines = data.decode().strip().split("\n")
                 for l in reversed(lines):
                     msg = l.split()[1:] # remove first field "pm"
