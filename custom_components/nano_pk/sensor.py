@@ -1,24 +1,17 @@
 """Platform for sensor integration."""
 import logging
-import asyncio
-from datetime import timedelta
 
-# Nettoyage des imports : plus de telnetlib, plus de apscheduler
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 from .const import (
-    DOMAIN, CONF_HOST, CONF_FORMAT, CONF_NAME, CONF_PARAMS, 
-    CONF_PARAMS_STANDARD, CONF_PARAMS_FULL, CONF_LANG, 
-    CONF_LANG_EN, CONF_LANG_DE, CONF_LANG_FR, BRIDGE_STATE_OK, CONF_UNIQUE_ID
+    DOMAIN, CONF_PARAMS, CONF_PARAMS_STANDARD, CONF_PARAMS_FULL,
+    CONF_LANG, CONF_LANG_DE, CONF_LANG_FR, CONF_LANG_EN,
+    BRIDGE_STATE_OK, CONF_UNIQUE_ID
 )
 from .hargassner import HargassnerBridge
 
 _LOGGER = logging.getLogger(__name__)
 
-# Très important : Définit la fréquence de lecture à 5 secondes
-SCAN_INTERVAL = timedelta(seconds=5)
-
-# --- DÉFINITION DES CLASSES D'ABORD (Pour éviter l'erreur "not defined") ---
 
 class HargassnerSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Sensor."""
@@ -57,12 +50,6 @@ class HargassnerSensor(CoordinatorEntity, SensorEntity):
     @property
     def state_class(self):
         return self._stateClass
-
-    @property
-    def native_value(self):
-        """Return the state of the sensor."""
-        # _value is obsolete, we compute directly from coordinator data
-        return self.coordinator.getValue(self._paramName)
 
     @property
     def native_unit_of_measurement(self):
@@ -241,32 +228,16 @@ class HargassnerConnectionSensor(CoordinatorEntity, SensorEntity):
 
 # --- CONFIGURATION ET SETUP ---
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None) -> None:
-    """Set up the sensor platform."""
-    host = hass.data[DOMAIN][CONF_HOST]
-    format = hass.data[DOMAIN][CONF_FORMAT]
-    name = hass.data[DOMAIN][CONF_NAME]
-    paramSet = hass.data[DOMAIN][CONF_PARAMS]
-    lang = hass.data[DOMAIN][CONF_LANG]
-    uniqueId = hass.data[DOMAIN][CONF_UNIQUE_ID]
-    
-    _LOGGER.info(f"Hargassner Nano-PK: Initialisation pour {host}...")
-    
-    # Création du coordinateur
-    bridge = HargassnerBridge(hass, host, name, uniqueId, msgFormat=format)
-    
-    # Tentative de première connexion immédiate (pour éviter le 'Unavailable' au démarrage)
-    await bridge.async_config_entry_first_refresh()
 
-    entities = []
-    # IMPORTANT : On ajoute le bridge comme capteur de connexion
-    entities.append(HargassnerConnectionSensor(bridge))
+def _build_entities(bridge, lang, param_set):
+    """Build the list of sensor entities for the given bridge and settings."""
+    entities = [HargassnerConnectionSensor(bridge)]
 
-    if paramSet == CONF_PARAMS_FULL:
-        for p in bridge.data().values(): 
-            if p.key()=="Störung": 
+    if param_set == CONF_PARAMS_FULL:
+        for p in bridge.data().values():
+            if p.key() == "Störung":
                 entities.append(HargassnerErrorSensor(bridge))
-            elif p.key()=="ZK": 
+            elif p.key() == "ZK":
                 entities.append(HargassnerStateSensor(bridge, lang))
             else:
                 entities.append(HargassnerSensor(bridge, p.description().capitalize(), p.key()))
@@ -288,8 +259,18 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
             HargassnerSensor(bridge, "Pellet stock", "Lagerstand", "mdi:silo"),
             HargassnerSensor(bridge, "Pellet consumption", "Verbrauchszähler", "mdi:basket-unfill"),
             HargassnerSensor(bridge, "Flow temperature", "TVL_1", "mdi:coolant-temperature"),
-            HargassnerEnergySensor(bridge)
+            HargassnerEnergySensor(bridge),
         ])
-        
+
+    return entities
+
+
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Set up sensors from a config entry."""
+    bridge = hass.data[DOMAIN][entry.entry_id]
+    lang = entry.data[CONF_LANG]
+    param_set = entry.data[CONF_PARAMS]
+
+    entities = _build_entities(bridge, lang, param_set)
     async_add_entities(entities)
-    _LOGGER.info(f"Hargassner Nano-PK: {len(entities)} entités ajoutées.")
+    _LOGGER.info("Hargassner Nano-PK: %d entities added via config entry.", len(entities))

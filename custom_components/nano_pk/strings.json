@@ -1,0 +1,24 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Hargassner Nano-PK",
+        "description": "Connect to your Hargassner heating system via Touch Tronic.",
+        "data": {
+          "host": "IP address of the heating system",
+          "msgformat": "Message format / firmware version",
+          "devicename": "Device name",
+          "unique_id": "Unique ID",
+          "parameters": "Parameter set",
+          "language": "Display language"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the heating system"
+    },
+    "abort": {
+      "already_configured": "This device is already configured"
+    }
+  }
+}
