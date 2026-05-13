@@ -4,7 +4,6 @@ import asyncio
 from datetime import timedelta
 
 # Nettoyage des imports : plus de telnetlib, plus de apscheduler
-from homeassistant.helpers.entity import Entity
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 from .const import (
     DOMAIN, CONF_HOST, CONF_FORMAT, CONF_NAME, CONF_PARAMS, 

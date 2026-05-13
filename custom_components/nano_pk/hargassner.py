@@ -108,7 +108,7 @@ class HargassnerDigitalParameter(HargassnerParameter):
 
 class HargassnerBridge(Entity):
        
-    def __init__(self, hostIP, name, uniqueId, updateInterval=1.0, msgFormat=HargassnerMessageTemplates.NANO_V14L):
+    def __init__(self, hostIP, name, uniqueId, msgFormat=HargassnerMessageTemplates.NANO_V14L):
         super().__init__()
         self._hostIP = hostIP
         self._connectionOK = False
