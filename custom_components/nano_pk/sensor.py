@@ -31,6 +31,7 @@ class HargassnerSensor(CoordinatorEntity, SensorEntity):
         self._icon = icon
         self._unique_id = bridge.getUniqueIdBase()
         self._unit = bridge.getUnit(paramName)
+        self._attr_has_entity_name = True
         
         sc = bridge.getStateClass(paramName)
         if (self._unit is None):
@@ -85,11 +86,20 @@ class HargassnerSensor(CoordinatorEntity, SensorEntity):
     def unique_id(self):
         return self._unique_id + self._paramName
 
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self.coordinator.getUniqueIdBase())},
+            "name": self.coordinator.name.replace(" connection", ""),
+            "manufacturer": "Hargassner",
+            "model": "Nano-PK",
+        }
+
 
 class HargassnerEnergySensor(HargassnerSensor):
 
-    def __init__(self, bridge, deviceName):
-        super().__init__(bridge, deviceName+" energy consumption", "Verbrauchszähler", "mdi:radiator")
+    def __init__(self, bridge):
+        super().__init__(bridge, "Energy consumption", "Verbrauchszähler", "mdi:radiator")
         self._deviceClass = SensorDeviceClass.ENERGY
         self._unit = "kWh"
 
@@ -127,8 +137,8 @@ class HargassnerErrorSensor(HargassnerSensor):
       "371" : "Brennraum prüfen"
     }
 
-    def __init__(self, bridge, deviceName):
-        super().__init__(bridge, deviceName+" operation", "Störung", "mdi:alert")
+    def __init__(self, bridge):
+        super().__init__(bridge, "Operation", "Störung", "mdi:alert")
         self._stateClass = None
         self._deviceClass = SensorDeviceClass.ENUM
         self._attr_options = ["OK", "Unknown", "Unknown Error"] + list(self.ERRORS.values())
@@ -160,8 +170,8 @@ class HargassnerErrorSensor(HargassnerSensor):
 
 class HargassnerStateSensor(HargassnerSensor):
 
-    def __init__(self, bridge, deviceName, lang):
-        super().__init__(bridge, deviceName+" boiler state", "ZK")
+    def __init__(self, bridge, lang):
+        super().__init__(bridge, "Boiler state", "ZK")
         self._stateClass = None
         self._deviceClass = SensorDeviceClass.ENUM
         if lang==CONF_LANG_DE:
@@ -196,10 +206,11 @@ class HargassnerStateSensor(HargassnerSensor):
 class HargassnerConnectionSensor(CoordinatorEntity, SensorEntity):
     """Representation of the Bridge Connection State."""
 
-    def __init__(self, bridge, deviceName):
+    def __init__(self, bridge):
         super().__init__(bridge)
-        self._name = deviceName + " connection"
+        self._name = "Connection"
         self._unique_id = bridge.getUniqueIdBase() + "_Connection"
+        self._attr_has_entity_name = True
 
     @property
     def name(self):
@@ -208,6 +219,15 @@ class HargassnerConnectionSensor(CoordinatorEntity, SensorEntity):
     @property
     def unique_id(self):
         return self._unique_id
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self.coordinator.getUniqueIdBase())},
+            "name": self.coordinator.name.replace(" connection", ""),
+            "manufacturer": "Hargassner",
+            "model": "Nano-PK",
+        }
 
     @property
     def native_value(self):
@@ -240,35 +260,35 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     entities = []
     # IMPORTANT : On ajoute le bridge comme capteur de connexion
-    entities.append(HargassnerConnectionSensor(bridge, name))
+    entities.append(HargassnerConnectionSensor(bridge))
 
     if paramSet == CONF_PARAMS_FULL:
         for p in bridge.data().values(): 
             if p.key()=="Störung": 
-                entities.append(HargassnerErrorSensor(bridge, name))
+                entities.append(HargassnerErrorSensor(bridge))
             elif p.key()=="ZK": 
-                entities.append(HargassnerStateSensor(bridge, name, lang))
+                entities.append(HargassnerStateSensor(bridge, lang))
             else:
-                entities.append(HargassnerSensor(bridge, name+" "+p.description(), p.key()))
-        entities.append(HargassnerEnergySensor(bridge, name))
+                entities.append(HargassnerSensor(bridge, p.description().capitalize(), p.key()))
+        entities.append(HargassnerEnergySensor(bridge))
     else:
         entities.extend([
-            HargassnerErrorSensor(bridge, name),
-            HargassnerStateSensor(bridge, name, lang),
-            HargassnerSensor(bridge, name+" boiler temperature", "TK"),
-            HargassnerSensor(bridge, name+" smoke gas temperature", "TRG"),
-            HargassnerSensor(bridge, name+" output", "Leistung", "mdi:fire"),
-            HargassnerSensor(bridge, name+" outside temperature", "Taus"),
-            HargassnerSensor(bridge, name+" buffer temperature 0", "TB1", "mdi:thermometer-lines"),
-            HargassnerSensor(bridge, name+" buffer temperature 1", "TPo", "mdi:thermometer-lines"),
-            HargassnerSensor(bridge, name+" buffer temperature 2", "TPm", "mdi:thermometer-lines"),
-            HargassnerSensor(bridge, name+" buffer temperature 3", "TPu", "mdi:thermometer-lines"),
-            HargassnerSensor(bridge, name+" return temperature", "TRL", "mdi:coolant-temperature"),
-            HargassnerSensor(bridge, name+" buffer level", "Puff Füllgrad", "mdi:gauge"),
-            HargassnerSensor(bridge, name+" pellet stock", "Lagerstand", "mdi:silo"),
-            HargassnerSensor(bridge, name+" pellet consumption", "Verbrauchszähler", "mdi:basket-unfill"),
-            HargassnerSensor(bridge, name+" flow temperature", "TVL_1", "mdi:coolant-temperature"),
-            HargassnerEnergySensor(bridge, name)
+            HargassnerErrorSensor(bridge),
+            HargassnerStateSensor(bridge, lang),
+            HargassnerSensor(bridge, "Boiler temperature", "TK"),
+            HargassnerSensor(bridge, "Smoke gas temperature", "TRG"),
+            HargassnerSensor(bridge, "Output", "Leistung", "mdi:fire"),
+            HargassnerSensor(bridge, "Outside temperature", "Taus"),
+            HargassnerSensor(bridge, "Buffer temperature 0", "TB1", "mdi:thermometer-lines"),
+            HargassnerSensor(bridge, "Buffer temperature 1", "TPo", "mdi:thermometer-lines"),
+            HargassnerSensor(bridge, "Buffer temperature 2", "TPm", "mdi:thermometer-lines"),
+            HargassnerSensor(bridge, "Buffer temperature 3", "TPu", "mdi:thermometer-lines"),
+            HargassnerSensor(bridge, "Return temperature", "TRL", "mdi:coolant-temperature"),
+            HargassnerSensor(bridge, "Buffer level", "Puff Füllgrad", "mdi:gauge"),
+            HargassnerSensor(bridge, "Pellet stock", "Lagerstand", "mdi:silo"),
+            HargassnerSensor(bridge, "Pellet consumption", "Verbrauchszähler", "mdi:basket-unfill"),
+            HargassnerSensor(bridge, "Flow temperature", "TVL_1", "mdi:coolant-temperature"),
+            HargassnerEnergySensor(bridge)
         ])
         
     async_add_entities(entities)
