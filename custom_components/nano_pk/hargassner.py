@@ -210,7 +210,7 @@ class HargassnerBridge(Entity):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return True
+        return self._connectionOK
         
     @property
     def state(self) -> str | None:
