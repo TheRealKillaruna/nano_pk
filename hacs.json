@@ -1,0 +1,6 @@
+{
+  "name": "Hargassner Nano-PK",
+  "country": ["AT", "CH", "DE", "FR"],
+  "homeassistant": "2022.7.0",
+  "render_readme": true
+}
