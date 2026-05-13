@@ -10,6 +10,7 @@ import logging
 from datetime import datetime, timedelta
 import xml.etree.ElementTree as xml
 from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from .const import BRIDGE_STATE_OK, BRIDGE_STATE_DISCONNECTED, BRIDGE_TIMEOUT
 
 _LOGGER = logging.getLogger(__name__)
@@ -106,10 +107,15 @@ class HargassnerDigitalParameter(HargassnerParameter):
             self._value = None
 
 
-class HargassnerBridge(Entity):
+class HargassnerBridge(DataUpdateCoordinator):
        
-    def __init__(self, hostIP, name, uniqueId, msgFormat=HargassnerMessageTemplates.NANO_V14L):
-        super().__init__()
+    def __init__(self, hass, hostIP, name, uniqueId, msgFormat=HargassnerMessageTemplates.NANO_V14L):
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=name + " connection",
+            update_interval=timedelta(seconds=5),
+        )
         self._hostIP = hostIP
         self._connectionOK = False
         self._reader = None
@@ -162,11 +168,11 @@ class HargassnerBridge(Entity):
             except Exception:
                 pass
         
-    async def async_update(self):
+    async def _async_update_data(self):
         if self._connectionOK:
             try:
                 msgReceived = False
-                data = await asyncio.wait_for(self._reader.read(64*1024), timeout=BRIDGE_TIMEOUT)   # read up to 64k
+                data = await asyncio.wait_for(self._reader.read(4096), timeout=BRIDGE_TIMEOUT)   # read up to 4k
                 lines = data.decode().strip().split("\n")
                 for l in reversed(lines):
                     msg = l.split()[1:] # remove first field "pm"
@@ -185,7 +191,6 @@ class HargassnerBridge(Entity):
             except Exception as e:
                 _LOGGER.error("HargassnerBridge.async_update(): Telnet connection error (" + repr(e) + ")")
                 self._connectionOK = False
-                return
         else:
             _LOGGER.info("HargassnerBridge.async_update(): Opening connection...")
             try:
@@ -196,33 +201,23 @@ class HargassnerBridge(Entity):
                 self._connectionOK = True
             except Exception:
                 _LOGGER.error("HargassnerBridge.async_update(): Error opening connection")
+                raise UpdateFailed("Error opening connection")
+        
+        return self._paramData
     
     @property
-    def name(self) -> str:
-        """Return the name of the entity."""
-        return self._name
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique ID of the sensor."""
-        return self._unique_id + "_Connection"
-
-    @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
+    def is_connected(self) -> bool:
         return self._connectionOK
-        
+    
     @property
-    def state(self) -> str | None:
+    def state(self) -> str:
         if self._connectionOK: return BRIDGE_STATE_OK
         else: return BRIDGE_STATE_DISCONNECTED
         
     @property
-    def icon(self):
-        """Return an icon for the sensor in the GUI."""
-        if self._connectionOK: return "mdi:network-outline"
-        else: return "mdi:network-off-outline"
-    
+    def unique_id(self) -> str:
+        return self._unique_id
+
     def getUniqueIdBase(self):
         return self._unique_id
 

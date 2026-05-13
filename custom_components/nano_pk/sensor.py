@@ -4,6 +4,7 @@ import asyncio
 from datetime import timedelta
 
 # Nettoyage des imports : plus de telnetlib, plus de apscheduler
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 from .const import (
     DOMAIN, CONF_HOST, CONF_FORMAT, CONF_NAME, CONF_PARAMS, 
@@ -19,13 +20,12 @@ SCAN_INTERVAL = timedelta(seconds=5)
 
 # --- DÉFINITION DES CLASSES D'ABORD (Pour éviter l'erreur "not defined") ---
 
-class HargassnerSensor(SensorEntity):
+class HargassnerSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Sensor."""
 
     def __init__(self, bridge, description, paramName, icon=None):
         """Initialize the sensor."""
-        self._value = None
-        self._bridge = bridge
+        super().__init__(bridge)
         self._description = description
         self._paramName = paramName
         self._icon = icon
@@ -59,7 +59,9 @@ class HargassnerSensor(SensorEntity):
 
     @property
     def native_value(self):
-        return self._value
+        """Return the state of the sensor."""
+        # _value is obsolete, we compute directly from coordinator data
+        return self.coordinator.getValue(self._paramName)
 
     @property
     def native_unit_of_measurement(self):
@@ -71,13 +73,13 @@ class HargassnerSensor(SensorEntity):
         
     @property
     def available(self):
-        # Le capteur est disponible si le pont est connecté
-        return self._bridge.state == BRIDGE_STATE_OK
+        # Le capteur est disponible si le pont est connecté et que le coordinateur a des données
+        return super().available and self.coordinator.is_connected
 
-    async def async_update(self):
-        """Fetch new state data for the sensor."""
-        # On lit la valeur depuis le cache du pont
-        self._value = self._bridge.getValue(self._paramName)
+    @property
+    def native_value(self):
+        """Return the state of the sensor."""
+        return self.coordinator.getValue(self._paramName)
 
     @property
     def unique_id(self):
@@ -91,13 +93,15 @@ class HargassnerEnergySensor(HargassnerSensor):
         self._deviceClass = SensorDeviceClass.ENERGY
         self._unit = "kWh"
 
-    async def async_update(self):
+    @property
+    def native_value(self):
         try:
-            val = self._bridge.getValue(self._paramName)
+            val = self.coordinator.getValue(self._paramName)
             if val is not None:
-                self._value = 4.8 * float(val)
+                return 4.8 * float(val)
         except Exception:
-            self._value = None
+            pass
+        return None
 
     @property
     def unique_id(self):
@@ -129,24 +133,29 @@ class HargassnerErrorSensor(HargassnerSensor):
         self._deviceClass = SensorDeviceClass.ENUM
         self._attr_options = ["OK", "Unknown", "Unknown Error"] + list(self.ERRORS.values())
 
-    async def async_update(self):
-        rawState = self._bridge.getValue(self._paramName)
+    @property
+    def native_value(self):
+        rawState = self.coordinator.getValue(self._paramName)
         if rawState is None: 
-            self._value = "Unknown"
+            return "Unknown"
         elif rawState == "False":
-            self._value = "OK"
-            self._icon = "mdi:check"
+            return "OK"
         else:
             try:
-                errorID = self._bridge.getValue("Störungs Nr")
+                errorID = self.coordinator.getValue("Störungs Nr")
                 errorDescr = self.ERRORS.get(errorID)
                 if errorDescr is None:
-                    self._value = "Unknown Error"
+                    return "Unknown Error"
                 else:
-                    self._value = errorDescr
+                    return errorDescr
             except Exception:
-                self._value = "Unknown Error"
-            self._icon = "mdi:alert"
+                return "Unknown Error"
+
+    @property
+    def icon(self):
+        if self.native_value == "OK":
+            return "mdi:check"
+        return "mdi:alert"
 
 
 class HargassnerStateSensor(HargassnerSensor):
@@ -162,8 +171,9 @@ class HargassnerStateSensor(HargassnerSensor):
         else:
             self._attr_options = ["Unknown", "Off", "Preparing start", "Boiler start", "Monitoring ignition", "Ignition", "Transition to FF", "Full firing", "Ember preservation", "Waiting for AR", "Ash removal", "-", "Cleaning"]
 
-    async def async_update(self):
-        rawState = self._bridge.getValue(self._paramName)
+    @property
+    def native_value(self):
+        rawState = self.coordinator.getValue(self._paramName)
         try:
             if rawState is None:
                 idxState = 0
@@ -173,9 +183,40 @@ class HargassnerStateSensor(HargassnerSensor):
                     idxState = 0
         except Exception:
             idxState = 0
-        self._value = self._attr_options[idxState]
-        if idxState == 6 or idxState == 7: self._icon = "mdi:fireplace" 
-        else: self._icon = "mdi:fireplace-off"
+        return self._attr_options[idxState]
+
+    @property
+    def icon(self):
+        val = self.native_value
+        if val in [self._attr_options[6], self._attr_options[7]]:
+            return "mdi:fireplace" 
+        return "mdi:fireplace-off"
+
+
+class HargassnerConnectionSensor(CoordinatorEntity, SensorEntity):
+    """Representation of the Bridge Connection State."""
+
+    def __init__(self, bridge, deviceName):
+        super().__init__(bridge)
+        self._name = deviceName + " connection"
+        self._unique_id = bridge.getUniqueIdBase() + "_Connection"
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def unique_id(self):
+        return self._unique_id
+
+    @property
+    def native_value(self):
+        return self.coordinator.state
+
+    @property
+    def icon(self):
+        if self.coordinator.is_connected: return "mdi:network-outline"
+        else: return "mdi:network-off-outline"
 
 
 # --- CONFIGURATION ET SETUP ---
@@ -191,20 +232,15 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     
     _LOGGER.info(f"Hargassner Nano-PK: Initialisation pour {host}...")
     
-    # Création du pont
-    bridge = HargassnerBridge(host, name, uniqueId, msgFormat=format)
+    # Création du coordinateur
+    bridge = HargassnerBridge(hass, host, name, uniqueId, msgFormat=format)
     
     # Tentative de première connexion immédiate (pour éviter le 'Unavailable' au démarrage)
-    try:
-        await bridge.async_update()
-        _LOGGER.info("Hargassner Nano-PK: Première connexion tentée.")
-    except Exception as e:
-        _LOGGER.warning(f"Hargassner Nano-PK: Erreur lors de la première connexion: {e}")
+    await bridge.async_config_entry_first_refresh()
 
     entities = []
-    # IMPORTANT : On ajoute le bridge à la liste des entités.
-    # C'est grâce à ça que SCAN_INTERVAL (5s) va déclencher bridge.async_update()
-    entities.append(bridge)
+    # IMPORTANT : On ajoute le bridge comme capteur de connexion
+    entities.append(HargassnerConnectionSensor(bridge, name))
 
     if paramSet == CONF_PARAMS_FULL:
         for p in bridge.data().values(): 
