@@ -61,7 +61,7 @@ class HargassnerSensor(CoordinatorEntity, SensorEntity):
         
     @property
     def available(self):
-        # Le capteur est disponible si le pont est connecté et que le coordinateur a des données
+        # Sensor is available if the bridge is connected and the coordinator has data
         return super().available and self.coordinator.is_connected
 
     @property
@@ -226,7 +226,7 @@ class HargassnerConnectionSensor(CoordinatorEntity, SensorEntity):
         else: return "mdi:network-off-outline"
 
 
-# --- CONFIGURATION ET SETUP ---
+# --- CONFIGURATION AND SETUP ---
 
 
 def _build_entities(bridge, lang, param_set):
