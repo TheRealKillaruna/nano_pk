@@ -37,7 +37,7 @@ class HargassnerSensor(SensorEntity):
         if (self._unit is None):
             self._stateClass = None
             self._deviceClass = SensorDeviceClass.ENUM
-            self._options = ["True", "False"]
+            self._attr_options = ["True", "False"]
         else:
             if sc == "measurement": self._stateClass = SensorStateClass.MEASUREMENT
             elif sc == "total": self._stateClass = SensorStateClass.TOTAL
@@ -128,7 +128,7 @@ class HargassnerErrorSensor(HargassnerSensor):
         super().__init__(bridge, deviceName+" operation", "Störung", "mdi:alert")
         self._stateClass = None
         self._deviceClass = SensorDeviceClass.ENUM
-        self._options = list(self.ERRORS.values())
+        self._attr_options = ["OK", "Unknown", "Unknown Error"] + list(self.ERRORS.values())
 
     async def async_update(self):
         # LOGS DE DEBUG : Pour voir si le pont remonte des erreurs
@@ -146,7 +146,7 @@ class HargassnerErrorSensor(HargassnerSensor):
                 errorID = self._bridge.getValue("Störungs Nr")
                 errorDescr = self.ERRORS.get(errorID)
                 if errorDescr is None:
-                    self._value = "Error " + str(errorID)
+                    self._value = "Unknown Error"
                 else:
                     self._value = errorDescr
             except Exception:
@@ -161,11 +161,11 @@ class HargassnerStateSensor(HargassnerSensor):
         self._stateClass = None
         self._deviceClass = SensorDeviceClass.ENUM
         if lang==CONF_LANG_DE:
-            self._options = ["Unbekannt", "Aus", "Startvorbereitung", "Kessel Start", "Zündüberwachung", "Zündung", "Übergang LB", "Leistungsbrand", "Gluterhaltung", "Warten auf EA", "Entaschung", "-", "Putzen"]
+            self._attr_options = ["Unbekannt", "Aus", "Startvorbereitung", "Kessel Start", "Zündüberwachung", "Zündung", "Übergang LB", "Leistungsbrand", "Gluterhaltung", "Warten auf EA", "Entaschung", "-", "Putzen"]
         elif lang==CONF_LANG_FR:
-            self._options = ["Inconnu", "Arrêt", "Préparation démarrage", "Démarrage chaudière", "Contrôle allumage", "Allumage", "Transition combustion", "Combustion", "Veille", "Décendrage dans 7mn", "Décendrage", "-", "Nettoyage"]
+            self._attr_options = ["Inconnu", "Arrêt", "Préparation démarrage", "Démarrage chaudière", "Contrôle allumage", "Allumage", "Transition combustion", "Combustion", "Veille", "Décendrage dans 7mn", "Décendrage", "-", "Nettoyage"]
         else:
-            self._options = ["Unknown", "Off", "Preparing start", "Boiler start", "Monitoring ignition", "Ignition", "Transition to FF", "Full firing", "Ember preservation", "Waiting for AR", "Ash removal", "-", "Cleaning"]
+            self._attr_options = ["Unknown", "Off", "Preparing start", "Boiler start", "Monitoring ignition", "Ignition", "Transition to FF", "Full firing", "Ember preservation", "Waiting for AR", "Ash removal", "-", "Cleaning"]
 
     async def async_update(self):
         rawState = self._bridge.getValue(self._paramName)
@@ -174,11 +174,11 @@ class HargassnerStateSensor(HargassnerSensor):
                 idxState = 0
             else:
                 idxState = int(rawState)
-                if not (idxState >= 0 and idxState < len(self._options)):
+                if not (idxState >= 0 and idxState < len(self._attr_options)):
                     idxState = 0
         except Exception:
             idxState = 0
-        self._value = self._options[idxState]
+        self._value = self._attr_options[idxState]
         if idxState == 6 or idxState == 7: self._icon = "mdi:fireplace" 
         else: self._icon = "mdi:fireplace-off"
 
