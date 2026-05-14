@@ -12,13 +12,33 @@
           "parameters": "Parameter set",
           "language": "Display language"
         }
+      },
+      "custom_xml": {
+        "title": "Enter custom firmware template",
+        "description": "You selected 'Custom' as the message format. Please paste the complete XML template from your heating's SD card below.\n\nHow to obtain it:\n1. Enable SD logging on the touch screen of your Hargassner heating.\n2. Insert an SD card into the heating, wait a few seconds, then remove it.\n3. On your computer, open the DAQ00000.DAQ file from the card with a text editor.\n4. Copy everything from <DAQPRJ> to </DAQPRJ> (including both tags) and paste it into the field below.",
+        "data": {
+          "custom_xml": "Paste the <DAQPRJ>…</DAQPRJ> XML block here"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Hargassner Nano-PK",
+        "description": "Update connection settings for your heating system.",
+        "data": {
+          "host": "IP address of the heating system",
+          "msgformat": "Message format / firmware version",
+          "devicename": "Device name",
+          "parameters": "Parameter set",
+          "language": "Display language"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect to the heating system"
+      "cannot_connect": "Failed to connect to the heating system",
+      "invalid_xml": "The provided text does not start with <DAQPRJ> or is not valid XML. Please copy the exact block from your SD card file."
     },
     "abort": {
-      "already_configured": "This device is already configured"
+      "already_configured": "This device is already configured",
+      "reconfigure_successful": "Re-configuration was successful"
     }
   }
 }

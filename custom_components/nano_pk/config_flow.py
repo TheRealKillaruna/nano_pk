@@ -1,6 +1,7 @@
 """Config flow for Hargassner Nano-PK integration."""
 import asyncio
 import logging
+import xml.etree.ElementTree as xml
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -34,11 +35,19 @@ TEMPLATES = [
     HargassnerMessageTemplates.NANO_V14O3,
 ]
 
+FORMAT_OPTIONS = TEMPLATES + ["custom"]
+
 
 class NanoPKConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Hargassner Nano-PK."""
 
     VERSION = 1
+
+    def __init__(self):
+        """Initialize the config flow."""
+        super().__init__()
+        self._user_input = None
+        self._reconfigure_entry = None
 
     async def async_step_user(
         self, user_input: dict | None = None
@@ -62,6 +71,9 @@ class NanoPKConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 await self.async_set_unique_id(user_input[CONF_UNIQUE_ID])
                 self._abort_if_unique_id_configured()
+                if user_input[CONF_FORMAT] == "custom":
+                    self._user_input = user_input
+                    return await self.async_step_custom_xml()
                 return self.async_create_entry(
                     title=user_input[CONF_NAME],
                     data=user_input,
@@ -70,7 +82,7 @@ class NanoPKConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         data_schema = vol.Schema(
             {
                 vol.Required(CONF_HOST): str,
-                vol.Required(CONF_FORMAT): vol.In(TEMPLATES),
+                vol.Required(CONF_FORMAT): vol.In(FORMAT_OPTIONS),
                 vol.Optional(CONF_NAME, default="Hargassner"): str,
                 vol.Optional(CONF_UNIQUE_ID, default="1"): str,
                 vol.Optional(CONF_PARAMS, default=CONF_PARAMS_STANDARD): vol.In(
@@ -84,6 +96,55 @@ class NanoPKConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
+            data_schema=data_schema,
+            errors=errors,
+        )
+
+    async def async_step_custom_xml(self, user_input=None):
+        """Handle custom XML message format input."""
+        errors = {}
+
+        if user_input is not None:
+            custom_xml = user_input.get("custom_xml", "").strip()
+            if not custom_xml.startswith("<DAQPRJ>"):
+                errors["custom_xml"] = "invalid_xml"
+            else:
+                try:
+                    xml.fromstring(custom_xml)
+                except xml.ParseError:
+                    errors["custom_xml"] = "invalid_xml"
+
+            if not errors:
+                if self._reconfigure_entry is not None:
+                    new_data = {
+                        **self._reconfigure_entry.data,
+                        **self._user_input,
+                        CONF_FORMAT: custom_xml,
+                    }
+                    return self.async_update_reload_and_abort(
+                        self._reconfigure_entry, data=new_data
+                    )
+                full_input = {**self._user_input, CONF_FORMAT: custom_xml}
+                return self.async_create_entry(
+                    title=full_input[CONF_NAME],
+                    data=full_input,
+                )
+
+        # Pre-fill with current custom XML when reconfiguring
+        default_xml = ""
+        if self._reconfigure_entry is not None:
+            current = self._reconfigure_entry.data.get(CONF_FORMAT, "")
+            if current not in TEMPLATES:
+                default_xml = current
+
+        data_schema = vol.Schema(
+            {
+                vol.Required("custom_xml", default=default_xml): str,
+            }
+        )
+
+        return self.async_show_form(
+            step_id="custom_xml",
             data_schema=data_schema,
             errors=errors,
         )
@@ -107,13 +168,20 @@ class NanoPKConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except (OSError, asyncio.TimeoutError):
                 errors["base"] = "cannot_connect"
             else:
+                if user_input[CONF_FORMAT] == "custom":
+                    self._reconfigure_entry = entry
+                    self._user_input = user_input
+                    return await self.async_step_custom_xml()
                 new_data = {**entry.data, **user_input}
                 return self.async_update_reload_and_abort(entry, data=new_data)
+
+        current_format = entry.data.get(CONF_FORMAT, "")
+        format_default = current_format if current_format in FORMAT_OPTIONS else "custom"
 
         data_schema = vol.Schema(
             {
                 vol.Required(CONF_HOST, default=entry.data[CONF_HOST]): str,
-                vol.Required(CONF_FORMAT, default=entry.data[CONF_FORMAT]): vol.In(TEMPLATES),
+                vol.Required(CONF_FORMAT, default=format_default): vol.In(FORMAT_OPTIONS),
                 vol.Optional(CONF_NAME, default=entry.data.get(CONF_NAME, "Hargassner")): str,
                 vol.Optional(CONF_PARAMS, default=entry.data.get(CONF_PARAMS, CONF_PARAMS_STANDARD)): vol.In(
                     [CONF_PARAMS_STANDARD, CONF_PARAMS_FULL]
