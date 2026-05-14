@@ -132,7 +132,8 @@ class HargassnerBridge(DataUpdateCoordinator):
         self._missedMsgs = 0
         self._name = name + " connection"
         self._unique_id = uniqueId
-        self.setMessageFormat(msgFormat)
+        if not self.setMessageFormat(msgFormat):
+            raise ValueError(f"Invalid message format: '{msgFormat[:200]}...'")
         
         
     def setMessageFormat(self, msgFormat):
