@@ -15,3 +15,7 @@ CONF_UNIQUE_ID = "unique_id"
 BRIDGE_STATE_OK = "OK"
 BRIDGE_STATE_DISCONNECTED = "Disconnected"
 BRIDGE_TIMEOUT = 2.0
+TELNET_PORT = 23
+
+# Conversion factor: kg of wood pellets → kWh (lower heating value, dry mass)
+PELLET_KWH_PER_KG = 4.8

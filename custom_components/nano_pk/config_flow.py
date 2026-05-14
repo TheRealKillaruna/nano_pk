@@ -21,6 +21,7 @@ from .const import (
     CONF_LANG_FR,
     CONF_UNIQUE_ID,
     BRIDGE_TIMEOUT,
+    TELNET_PORT,
 )
 from .hargassner import HargassnerMessageTemplates
 
@@ -57,10 +58,10 @@ class NanoPKConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             try:
-                _, writer = await asyncio.wait_for(
-                    asyncio.open_connection(user_input[CONF_HOST], 23),
-                    timeout=BRIDGE_TIMEOUT,
-                )
+                async with asyncio.timeout(BRIDGE_TIMEOUT):
+                    _, writer = await asyncio.open_connection(
+                        user_input[CONF_HOST], TELNET_PORT
+                    )
                 writer.close()
                 try:
                     await writer.wait_closed()
@@ -156,10 +157,10 @@ class NanoPKConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             try:
-                _, writer = await asyncio.wait_for(
-                    asyncio.open_connection(user_input[CONF_HOST], 23),
-                    timeout=BRIDGE_TIMEOUT,
-                )
+                async with asyncio.timeout(BRIDGE_TIMEOUT):
+                    _, writer = await asyncio.open_connection(
+                        user_input[CONF_HOST], TELNET_PORT
+                    )
                 writer.close()
                 try:
                     await writer.wait_closed()

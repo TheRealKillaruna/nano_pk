@@ -44,7 +44,6 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Nano-PK integration from YAML."""
     if DOMAIN not in config:

@@ -6,7 +6,7 @@ from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, Sen
 from .const import (
     DOMAIN, CONF_PARAMS, CONF_PARAMS_STANDARD, CONF_PARAMS_FULL,
     CONF_LANG, CONF_LANG_DE, CONF_LANG_FR, CONF_LANG_EN,
-    BRIDGE_STATE_OK, CONF_UNIQUE_ID
+    BRIDGE_STATE_OK, CONF_UNIQUE_ID, PELLET_KWH_PER_KG
 )
 from .hargassner import HargassnerBridge
 
@@ -95,7 +95,7 @@ class HargassnerEnergySensor(HargassnerSensor):
         try:
             val = self.coordinator.getValue(self._paramName)
             if val is not None:
-                return 4.8 * float(val)
+                return PELLET_KWH_PER_KG * float(val)
         except Exception:
             pass
         return None

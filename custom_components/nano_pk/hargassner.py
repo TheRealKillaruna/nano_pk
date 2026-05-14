@@ -11,7 +11,7 @@ import os
 from datetime import datetime, timedelta
 import xml.etree.ElementTree as xml
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from .const import BRIDGE_STATE_OK, BRIDGE_STATE_DISCONNECTED, BRIDGE_TIMEOUT
+from .const import BRIDGE_STATE_OK, BRIDGE_STATE_DISCONNECTED, BRIDGE_TIMEOUT, TELNET_PORT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ class HargassnerDigitalParameter(HargassnerParameter):
     
     def initializeFromMessage(self, msg):
         try:
-            self._value = (str)(((int)(msg[self._index], 16) & self._bitmask) > 0)
+            self._value = str((int(msg[self._index], 16) & self._bitmask) > 0)
         except Exception:
             self._value = None
 
@@ -145,23 +145,23 @@ class HargassnerBridge(DataUpdateCoordinator):
         root = xml.fromstring(msgFormat)
         analog = root.find("ANALOG")
         for channel in analog.findall("CHANNEL"):
-            uniqueName = (str)(channel.get("name"))
+            uniqueName = channel.get("name")
             nameCount = 1
             while uniqueName in self._paramData: # in case parameter name is duplicate, add a counter to make it unique
                 nameCount += 1
-                uniqueName = (str)(channel.get("name")) + "_" + str(nameCount)
+                uniqueName = channel.get("name") + "_" + str(nameCount)
             chUnit = channel.get("unit")
-            if chUnit is not None: strUnit = (str)(chUnit)
+            if chUnit is not None: strUnit = chUnit
             else: strUnit = None # in case parameter has no unit, do not use string conversion but set explicitly to None
-            self._paramData[uniqueName] = HargassnerAnalogueParameter(uniqueName, (int)(channel.get("id")), strUnit)
+            self._paramData[uniqueName] = HargassnerAnalogueParameter(uniqueName, int(channel.get("id")), strUnit)
         ofsDigital = len(self._paramData) # assuming that channel ids/indices are listed consecutively without any misses!
         lenDigital = 0
         digital = root.find("DIGITAL")
         for channel in digital.findall("CHANNEL"):
-            self._paramData[(str)(channel.get("name"))] = HargassnerDigitalParameter( (str)(channel.get("name")), ofsDigital + (int)(channel.get("id")),  1 << (int)(channel.get("bit")))
-            lenDigital = (int)(channel.get("id")) + 1 # assuming that channel ids are increasing
+            self._paramData[channel.get("name")] = HargassnerDigitalParameter(channel.get("name"), ofsDigital + int(channel.get("id")), 1 << int(channel.get("bit")))
+            lenDigital = int(channel.get("id")) + 1 # assuming that channel ids are increasing
         self._expectedMsgLength = ofsDigital + lenDigital
-        _LOGGER.info("HargassnerBridge.setMessageFormat(): successfully parsed " + (str)(self._expectedMsgLength) + " elements.")
+        _LOGGER.info("HargassnerBridge.setMessageFormat(): successfully parsed %d elements.", self._expectedMsgLength)
         return True
         
     async def async_will_remove_from_hass(self) -> None:
@@ -178,7 +178,8 @@ class HargassnerBridge(DataUpdateCoordinator):
         if self._connectionOK:
             try:
                 msgReceived = False
-                data = await asyncio.wait_for(self._reader.read(64*1024), timeout=BRIDGE_TIMEOUT)   # read up to 64k
+                async with asyncio.timeout(BRIDGE_TIMEOUT):
+                    data = await self._reader.read(64*1024)   # read up to 64k
                 lines = data.decode().strip().split("\n")
                 for l in reversed(lines):
                     msg = l.split()[1:] # remove first field "pm"
@@ -203,7 +204,8 @@ class HargassnerBridge(DataUpdateCoordinator):
                 if self._writer:
                     self._writer.close()
                     await self._writer.wait_closed()
-                self._reader, self._writer = await asyncio.wait_for(asyncio.open_connection(self._hostIP, 23), timeout=BRIDGE_TIMEOUT)
+                async with asyncio.timeout(BRIDGE_TIMEOUT):
+                    self._reader, self._writer = await asyncio.open_connection(self._hostIP, TELNET_PORT)
                 self._connectionOK = True
             except Exception:
                 _LOGGER.error("HargassnerBridge.async_update(): Error opening connection")
