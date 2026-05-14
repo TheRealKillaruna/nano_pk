@@ -88,6 +88,48 @@ class NanoPKConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    async def async_step_reconfigure(self, user_input=None):
+        """Handle reconfiguration of an existing entry."""
+        errors = {}
+        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+
+        if user_input is not None:
+            try:
+                _, writer = await asyncio.wait_for(
+                    asyncio.open_connection(user_input[CONF_HOST], 23),
+                    timeout=BRIDGE_TIMEOUT,
+                )
+                writer.close()
+                try:
+                    await writer.wait_closed()
+                except Exception:
+                    pass
+            except (OSError, asyncio.TimeoutError):
+                errors["base"] = "cannot_connect"
+            else:
+                new_data = {**entry.data, **user_input}
+                return self.async_update_reload_and_abort(entry, data=new_data)
+
+        data_schema = vol.Schema(
+            {
+                vol.Required(CONF_HOST, default=entry.data[CONF_HOST]): str,
+                vol.Required(CONF_FORMAT, default=entry.data[CONF_FORMAT]): vol.In(TEMPLATES),
+                vol.Optional(CONF_NAME, default=entry.data.get(CONF_NAME, "Hargassner")): str,
+                vol.Optional(CONF_PARAMS, default=entry.data.get(CONF_PARAMS, CONF_PARAMS_STANDARD)): vol.In(
+                    [CONF_PARAMS_STANDARD, CONF_PARAMS_FULL]
+                ),
+                vol.Optional(CONF_LANG, default=entry.data.get(CONF_LANG, CONF_LANG_EN)): vol.In(
+                    [CONF_LANG_EN, CONF_LANG_DE, CONF_LANG_FR]
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=data_schema,
+            errors=errors,
+        )
+
     async def async_step_import(self, import_config: dict) -> FlowResult:
         """Handle import from YAML configuration."""
         await self.async_set_unique_id(import_config.get(CONF_UNIQUE_ID, "1"))
