@@ -234,7 +234,7 @@ def _build_entities(bridge, lang, param_set):
     entities = [HargassnerConnectionSensor(bridge)]
 
     if param_set == CONF_PARAMS_FULL:
-        for p in bridge.data().values():
+        for p in bridge.parameters().values():
             if p.key() == "Störung":
                 entities.append(HargassnerErrorSensor(bridge))
             elif p.key() == "ZK":

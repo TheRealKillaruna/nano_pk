@@ -251,7 +251,7 @@ class HargassnerBridge(DataUpdateCoordinator):
             return None 
         return param.stateClass()
     
-    def data(self):
+    def parameters(self):
         return self._paramData
     
     def latestUpdateTime(self):
