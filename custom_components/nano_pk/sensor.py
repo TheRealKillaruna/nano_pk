@@ -27,17 +27,18 @@ class HargassnerSensor(CoordinatorEntity, SensorEntity):
         self._attr_has_entity_name = True
         
         sc = bridge.getStateClass(paramName)
-        if (self._unit is None):
+        if sc == "measurement": self._stateClass = SensorStateClass.MEASUREMENT
+        elif sc == "total": self._stateClass = SensorStateClass.TOTAL
+        elif sc == "total_increasing": self._stateClass = SensorStateClass.TOTAL_INCREASING
+        else: self._stateClass = None
+
+        if self._unit == "°C": self._deviceClass = SensorDeviceClass.TEMPERATURE
+        else: self._deviceClass = None
+
+        if bridge.isDigital(paramName):
             self._stateClass = None
             self._deviceClass = SensorDeviceClass.ENUM
             self._attr_options = ["True", "False"]
-        else:
-            if sc == "measurement": self._stateClass = SensorStateClass.MEASUREMENT
-            elif sc == "total": self._stateClass = SensorStateClass.TOTAL
-            elif sc == "total_increasing": self._stateClass = SensorStateClass.TOTAL_INCREASING
-            
-            if self._unit == "°C": self._deviceClass = SensorDeviceClass.TEMPERATURE
-            else: self._deviceClass = None
 
     @property
     def name(self):

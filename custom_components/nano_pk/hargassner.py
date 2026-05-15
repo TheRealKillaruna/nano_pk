@@ -89,6 +89,9 @@ class HargassnerParameter:
     
     def stateClass(self):
         return self._stateClass
+    
+    def isDigital(self):
+        return False
 
 
 class HargassnerAnalogueParameter(HargassnerParameter):
@@ -111,6 +114,9 @@ class HargassnerDigitalParameter(HargassnerParameter):
             self._value = str((int(msg[self._index], 16) & self._bitmask) > 0)
         except Exception:
             self._value = None
+    
+    def isDigital(self):
+        return True
 
 
 class HargassnerBridge(DataUpdateCoordinator):
@@ -152,8 +158,9 @@ class HargassnerBridge(DataUpdateCoordinator):
                 nameCount += 1
                 uniqueName = channel.get("name") + "_" + str(nameCount)
             chUnit = channel.get("unit")
-            if chUnit is not None: strUnit = chUnit
-            else: strUnit = None # in case parameter has no unit, do not use string conversion but set explicitly to None
+            if chUnit is None: strUnit = None # in case parameter has no unit, do not use string conversion but set explicitly to None
+            elif chUnit == "": strUnit = None # also treat empty unit attributes as no unit
+            else: strUnit = chUnit
             self._paramData[uniqueName] = HargassnerAnalogueParameter(uniqueName, int(channel.get("id")), strUnit)
         ofsDigital = len(self._paramData) # assuming that channel ids/indices are listed consecutively without any misses!
         lenDigital = 0
@@ -250,6 +257,13 @@ class HargassnerBridge(DataUpdateCoordinator):
             _LOGGER.warning("HargassnerBridge.getStateClass(): Parameter key " + paramName + " not known.")
             return None 
         return param.stateClass()
+    
+    def isDigital(self, paramName):
+        param = self._paramData.get(paramName)
+        if param==None:
+            _LOGGER.warning("HargassnerBridge.isDigital(): Parameter key " + paramName + " not known.")
+            return False
+        return param.isDigital()
     
     def parameters(self):
         return self._paramData
