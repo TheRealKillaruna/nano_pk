@@ -27,14 +27,7 @@ from .hargassner import HargassnerMessageTemplates
 
 _LOGGER = logging.getLogger(__name__)
 
-TEMPLATES = [
-    HargassnerMessageTemplates.NANO_V14K,
-    HargassnerMessageTemplates.NANO_V14L,
-    HargassnerMessageTemplates.NANO_V14M,
-    HargassnerMessageTemplates.NANO_V14N,
-    HargassnerMessageTemplates.NANO_V14N2,
-    HargassnerMessageTemplates.NANO_V14O3,
-]
+TEMPLATES = list(HargassnerMessageTemplates.DICT.keys())
 
 FORMAT_OPTIONS = TEMPLATES + ["custom"]
 

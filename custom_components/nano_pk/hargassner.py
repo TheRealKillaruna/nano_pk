@@ -15,32 +15,26 @@ from .const import BRIDGE_STATE_OK, BRIDGE_STATE_DISCONNECTED, BRIDGE_TIMEOUT, T
 
 _LOGGER = logging.getLogger(__name__)
 
-_TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
-
-
-def _load_templates() -> dict:
-    """Load all XML template files at module import time (outside the event loop)."""
-    templates = {}
-    for fname in os.listdir(_TEMPLATES_DIR):
-        if fname.endswith(".xml"):
-            key = fname[:-4]  # strip .xml
-            path = os.path.join(_TEMPLATES_DIR, fname)
-            with open(path, encoding="utf-8") as f:
-                templates[key] = f.read()
-    return templates
 
 
 class HargassnerMessageTemplates:
 
-    NANO_V14K = "NANO_V14K"
-    NANO_V14L = "NANO_V14L"
-    NANO_V14M = "NANO_V14M"
-    NANO_V14N = "NANO_V14N"
-    NANO_V14N2 = "NANO_V14N2"
-    NANO_V14O3 = "NANO_V14O3"
+    _TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
+
+    @staticmethod
+    def _load_templates(template_dir) -> dict:
+        """Load all XML template files at module import time (outside the event loop)."""
+        templates = {}
+        for fname in sorted(os.listdir(template_dir)):
+            if fname.endswith(".xml"):
+                key = fname[:-4]  # strip .xml
+                path = os.path.join(template_dir, fname)
+                with open(path, encoding="utf-8") as f:
+                    templates[key] = f.read()
+        return templates
 
     # Loaded once at module import time — no I/O on the event loop
-    DICT = _load_templates()
+    DICT = _load_templates(_TEMPLATES_DIR)
 
 
 class HargassnerParameter:
@@ -121,7 +115,7 @@ class HargassnerDigitalParameter(HargassnerParameter):
 
 class HargassnerBridge(DataUpdateCoordinator):
        
-    def __init__(self, hass, hostIP, name, uniqueId, msgFormat=HargassnerMessageTemplates.NANO_V14L):
+    def __init__(self, hass, hostIP, name, uniqueId, msgFormat):
         super().__init__(
             hass,
             _LOGGER,
